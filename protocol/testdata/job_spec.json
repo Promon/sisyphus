@@ -1,0 +1,414 @@
+{
+  "id": 158985,
+  "token": "xxHY8xQu9kVixzGZs6kB",
+  "allow_git_fetch": true,
+  "job_info": {
+    "name": "sample build with after",
+    "stage": "build",
+    "project_id": 120,
+    "project_name": "sisyphus"
+  },
+  "git_info": {
+    "repo_url": "https://gitlab-ci-token:xxHY8xQu9kVixzGZs6kB@git.dev.promon.no/andreas/sisyphus.git",
+    "ref": "master",
+    "sha": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
+    "before_sha": "38a0997587398861d36cd266679fac840beac11b",
+    "ref_type": "branch",
+    "refspecs": [
+      "+refs/heads/*:refs/remotes/origin/*",
+      "+refs/tags/*:refs/tags/*"
+    ],
+    "depth": 0
+  },
+  "runner_info": {
+    "timeout": 3600,
+    "runner_session_url": null
+  },
+  "variables": [
+    {
+      "key": "CI_PIPELINE_ID",
+      "value": "9334",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PIPELINE_URL",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/pipelines/9334",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_JOB_ID",
+      "value": "158985",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_JOB_URL",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/-/jobs/158985",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_JOB_TOKEN",
+      "value": "xxHY8xQu9kVixzGZs6kB",
+      "public": false,
+      "masked": true
+    },
+    {
+      "key": "CI_BUILD_ID",
+      "value": "158985",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_TOKEN",
+      "value": "xxHY8xQu9kVixzGZs6kB",
+      "public": false,
+      "masked": true
+    },
+    {
+      "key": "CI_REGISTRY_USER",
+      "value": "gitlab-ci-token",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_REGISTRY_PASSWORD",
+      "value": "xxHY8xQu9kVixzGZs6kB",
+      "public": false,
+      "masked": true
+    },
+    {
+      "key": "CI_REPOSITORY_URL",
+      "value": "https://gitlab-ci-token:xxHY8xQu9kVixzGZs6kB@git.dev.promon.no/andreas/sisyphus.git",
+      "public": false,
+      "masked": false
+    },
+    {
+      "key": "CI",
+      "value": "true",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_CI",
+      "value": "true",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_FEATURES",
+      "value": "",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_NAME",
+      "value": "GitLab",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_VERSION",
+      "value": "11.10.4",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_VERSION_MAJOR",
+      "value": "11",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_VERSION_MINOR",
+      "value": "10",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_VERSION_PATCH",
+      "value": "4",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_SERVER_REVISION",
+      "value": "62c464651d2",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_JOB_NAME",
+      "value": "sample build with after",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_JOB_STAGE",
+      "value": "build",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_SHA",
+      "value": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_SHORT_SHA",
+      "value": "d6b01dc9",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_BEFORE_SHA",
+      "value": "38a0997587398861d36cd266679fac840beac11b",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_REF_NAME",
+      "value": "master",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_REF_SLUG",
+      "value": "master",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_NODE_TOTAL",
+      "value": "1",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_REF",
+      "value": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_BEFORE_SHA",
+      "value": "38a0997587398861d36cd266679fac840beac11b",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_REF_NAME",
+      "value": "master",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_REF_SLUG",
+      "value": "master",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_NAME",
+      "value": "sample build with after",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_BUILD_STAGE",
+      "value": "build",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_ID",
+      "value": "120",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_NAME",
+      "value": "sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_PATH",
+      "value": "andreas/sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_PATH_SLUG",
+      "value": "andreas-sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_NAMESPACE",
+      "value": "andreas",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_URL",
+      "value": "https://git.dev.promon.no/andreas/sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PROJECT_VISIBILITY",
+      "value": "private",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PAGES_DOMAIN",
+      "value": "example.com",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PAGES_URL",
+      "value": "http://andreas.example.com/sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_API_V4_URL",
+      "value": "https://git.dev.promon.no/api/v4",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PIPELINE_IID",
+      "value": "4",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_CONFIG_PATH",
+      "value": ".gitlab-ci.yml",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_PIPELINE_SOURCE",
+      "value": "push",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_MESSAGE",
+      "value": "Sample ci yaml\n",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_TITLE",
+      "value": "Sample ci yaml",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_COMMIT_DESCRIPTION",
+      "value": "",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_RUNNER_ID",
+      "value": "129",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_RUNNER_DESCRIPTION",
+      "value": "Test Runner",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "CI_RUNNER_TAGS",
+      "value": "golang, sisyphus",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_USER_ID",
+      "value": "11",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_USER_EMAIL",
+      "value": "andreas@promon.no",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_USER_LOGIN",
+      "value": "andreas",
+      "public": true,
+      "masked": false
+    },
+    {
+      "key": "GITLAB_USER_NAME",
+      "value": "Andreas Bakurov",
+      "public": true,
+      "masked": false
+    }
+  ],
+  "steps": [
+    {
+      "name": "script",
+      "script": [
+        "echo \"Hello World !\"",
+        "printenv"
+      ],
+      "timeout": 3600,
+      "when": "on_success",
+      "allow_failure": false
+    },
+    {
+      "name": "after_script",
+      "script": [
+        "exit 0"
+      ],
+      "timeout": 3600,
+      "when": "always",
+      "allow_failure": true
+    }
+  ],
+  "image": {
+    "name": "golang:latest",
+    "entrypoint": null,
+    "ports": []
+  },
+  "services": [],
+  "artifacts": [
+    {
+      "name": null,
+      "untracked": null,
+      "paths": [
+        "/tmp/buildx*",
+        "/tmp/hello*"
+      ],
+      "when": "on_success",
+      "expire_in": "1 day",
+      "artifact_type": "archive",
+      "artifact_format": "zip"
+    }
+  ],
+  "cache": [
+    null
+  ],
+  "credentials": [],
+  "dependencies": [],
+  "features": {
+    "trace_sections": true
+  }
+}

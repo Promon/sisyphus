@@ -1,0 +1,39 @@
+stages:
+  - build
+
+sample build:
+  image: golang:latest
+  stage: build
+  script:
+    - echo "Hello World !"
+  tags:
+    - golang
+  artifacts:
+    when: on_success
+    expire_in: 1 day
+    paths:
+      - /tmp/buildx*
+      - /tmp/hello*
+  cache:
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+    policy: pull-push
+    key: shielder-main-cache
+
+#sample build with after:
+#  image: golang:latest
+#  stage: build
+#  script:
+#    - echo "Hello World !"
+#    - printenv
+#  after_script:
+#    - exit 0
+#  tags:
+#    - golang
+#  artifacts:
+#    when: on_success
+#    expire_in: 1 day
+#    paths:
+#      - /tmp/buildx*
+#      - /tmp/hello*

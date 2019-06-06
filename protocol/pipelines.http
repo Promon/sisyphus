@@ -5,9 +5,9 @@
 # * 'ptr' and 'ptrp' create a POST request with a simple or parameter-like body;
 # * 'mptr' and 'fptr' create a POST request to submit a form with a text or file field (multipart/form-data);
 
-#GET https://git.dev.promon.no/api/v4/projects?per_page=500
-#Accept: application/json
-#Private-Token: AaNZWjA47W9FTin2gGGh
+GET https://git.dev.promon.no/api/v4/projects?per_page=1
+Accept: application/json
+Private-Token: AaNZWjA47W9FTin2gGGh
 
 
 GET https://git.dev.promon.no/api/v4/projects/1/pipelines/9265

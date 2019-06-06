@@ -1,0 +1,53 @@
+# For a quick start check out our HTTP Requests collection (Tools|HTTP Client|Open HTTP Requests Collection).
+#
+# Following HTTP Request Live Templates are available:
+# * 'gtrp' and 'gtr' create a GET request with or without query parameters;
+# * 'ptr' and 'ptrp' create a POST request with a simple or parameter-like body;
+# * 'mptr' and 'fptr' create a POST request to submit a form with a text or file field (multipart/form-data);
+
+POST https://git.dev.promon.no/api/v4/runners
+Content-Type: application/json
+
+{
+  "token": "mqztFVP2KQdPgFJi9naN",
+  "tag_list": [
+    "golang",
+    "sisyphus"
+  ],
+  "description": "Test Runner"
+}
+
+###
+# RESPONSE:
+#{
+#  "id": 129,
+#  "token": "kxZppSfxQjM6aAmAoxjo"
+#}
+
+POST https://git.dev.promon.no/api/v4/jobs/request
+Content-Type: application/json
+
+{
+  "token": "kxZppSfxQjM6aAmAoxjo"
+}
+
+###
+
+# 157094
+PATCH https://git.dev.promon.no/api/v4/jobs/157094/trace
+Content-Type: text/plain
+Content-Range: 13-25
+Job-Token: MEypaqwVxju9maGxnA3u
+
+What is LOG !
+
+###
+
+PUT https://git.dev.promon.no/api/v4/jobs/157094
+Content-Type: application/json
+
+{
+  "token": "MEypaqwVxju9maGxnA3u",
+  "state": "failed"
+}
+###

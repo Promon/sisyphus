@@ -1,4 +1,4 @@
-module ciproxy
+module sisyphus
 
 go 1.12
 
