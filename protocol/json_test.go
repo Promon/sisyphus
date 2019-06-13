@@ -13,7 +13,7 @@ func Test_parse_X(t *testing.T) {
 	//}
 	//for _, tt := range tests {
 	//	t.Run(tt.name, func(t *testing.T) {
-	//		parse()
+	//		ParseJobSpec()
 	//	})
 	//}
 
@@ -22,7 +22,7 @@ func Test_parse_X(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = parse(jsonData)
+	_, err = ParseJobSpec(jsonData)
 	if err != nil {
 		t.Error(err)
 	}

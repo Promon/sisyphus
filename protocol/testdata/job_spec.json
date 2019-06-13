@@ -1,18 +1,18 @@
 {
-  "id": 158985,
-  "token": "xxHY8xQu9kVixzGZs6kB",
+  "id": 158988,
+  "token": "NqE-gyzmRdkfXTkBBwDS",
   "allow_git_fetch": true,
   "job_info": {
-    "name": "sample build with after",
+    "name": "sample build",
     "stage": "build",
     "project_id": 120,
     "project_name": "sisyphus"
   },
   "git_info": {
-    "repo_url": "https://gitlab-ci-token:xxHY8xQu9kVixzGZs6kB@git.dev.promon.no/andreas/sisyphus.git",
+    "repo_url": "https://gitlab-ci-token:NqE-gyzmRdkfXTkBBwDS@git.dev.promon.no/andreas/sisyphus.git",
     "ref": "master",
-    "sha": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
-    "before_sha": "38a0997587398861d36cd266679fac840beac11b",
+    "sha": "774601c994db42f489e7569a9bca77bb77a5ebec",
+    "before_sha": "f59431188b8602fbdfdfdb12bdc682b7a6e479ff",
     "ref_type": "branch",
     "refspecs": [
       "+refs/heads/*:refs/remotes/origin/*",
@@ -27,43 +27,43 @@
   "variables": [
     {
       "key": "CI_PIPELINE_ID",
-      "value": "9334",
+      "value": "9336",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_PIPELINE_URL",
-      "value": "https://git.dev.promon.no/andreas/sisyphus/pipelines/9334",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/pipelines/9336",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_ID",
-      "value": "158985",
+      "value": "158988",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_URL",
-      "value": "https://git.dev.promon.no/andreas/sisyphus/-/jobs/158985",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/-/jobs/158988",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_TOKEN",
-      "value": "xxHY8xQu9kVixzGZs6kB",
+      "value": "NqE-gyzmRdkfXTkBBwDS",
       "public": false,
       "masked": true
     },
     {
       "key": "CI_BUILD_ID",
-      "value": "158985",
+      "value": "158988",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_BUILD_TOKEN",
-      "value": "xxHY8xQu9kVixzGZs6kB",
+      "value": "NqE-gyzmRdkfXTkBBwDS",
       "public": false,
       "masked": true
     },
@@ -75,13 +75,13 @@
     },
     {
       "key": "CI_REGISTRY_PASSWORD",
-      "value": "xxHY8xQu9kVixzGZs6kB",
+      "value": "NqE-gyzmRdkfXTkBBwDS",
       "public": false,
       "masked": true
     },
     {
       "key": "CI_REPOSITORY_URL",
-      "value": "https://gitlab-ci-token:xxHY8xQu9kVixzGZs6kB@git.dev.promon.no/andreas/sisyphus.git",
+      "value": "https://gitlab-ci-token:NqE-gyzmRdkfXTkBBwDS@git.dev.promon.no/andreas/sisyphus.git",
       "public": false,
       "masked": false
     },
@@ -141,7 +141,7 @@
     },
     {
       "key": "CI_JOB_NAME",
-      "value": "sample build with after",
+      "value": "sample build",
       "public": true,
       "masked": false
     },
@@ -153,19 +153,19 @@
     },
     {
       "key": "CI_COMMIT_SHA",
-      "value": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
+      "value": "774601c994db42f489e7569a9bca77bb77a5ebec",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_COMMIT_SHORT_SHA",
-      "value": "d6b01dc9",
+      "value": "774601c9",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_COMMIT_BEFORE_SHA",
-      "value": "38a0997587398861d36cd266679fac840beac11b",
+      "value": "f59431188b8602fbdfdfdb12bdc682b7a6e479ff",
       "public": true,
       "masked": false
     },
@@ -189,13 +189,13 @@
     },
     {
       "key": "CI_BUILD_REF",
-      "value": "d6b01dc96430ee422a3474f7aac1b448007abfe9",
+      "value": "774601c994db42f489e7569a9bca77bb77a5ebec",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_BUILD_BEFORE_SHA",
-      "value": "38a0997587398861d36cd266679fac840beac11b",
+      "value": "f59431188b8602fbdfdfdb12bdc682b7a6e479ff",
       "public": true,
       "masked": false
     },
@@ -213,7 +213,7 @@
     },
     {
       "key": "CI_BUILD_NAME",
-      "value": "sample build with after",
+      "value": "sample build",
       "public": true,
       "masked": false
     },
@@ -285,7 +285,7 @@
     },
     {
       "key": "CI_PIPELINE_IID",
-      "value": "4",
+      "value": "6",
       "public": true,
       "masked": false
     },
@@ -366,21 +366,11 @@
     {
       "name": "script",
       "script": [
-        "echo \"Hello World !\"",
-        "printenv"
+        "echo \"Hello World !\""
       ],
       "timeout": 3600,
       "when": "on_success",
       "allow_failure": false
-    },
-    {
-      "name": "after_script",
-      "script": [
-        "exit 0"
-      ],
-      "timeout": 3600,
-      "when": "always",
-      "allow_failure": true
     }
   ],
   "image": {
@@ -404,7 +394,15 @@
     }
   ],
   "cache": [
-    null
+    {
+      "key": "shielder-main-cache",
+      "untracked": null,
+      "paths": [
+        ".gradle/wrapper",
+        ".gradle/caches"
+      ],
+      "policy": "pull-push"
+    }
   ],
   "credentials": [],
   "dependencies": [],

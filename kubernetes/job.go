@@ -7,10 +7,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sisyphus/protocol"
 )
 
-const MainContainer string = "fubar"
-const MainImage string = "ubuntu:latest"
+const ContainerNameBuilder = "builder"
 
 type Job struct {
 	session *Session
@@ -94,7 +94,7 @@ func (j *Job) GetLog() (io.ReadCloser, error) {
 
 	for _, pod := range pods {
 		for _, ctr := range pod.Spec.Containers {
-			if ctr.Name == MainContainer {
+			if ctr.Name == ContainerNameBuilder {
 				logOpts := v1.PodLogOptions{
 					Container: ctr.Name,
 				}
@@ -105,7 +105,7 @@ func (j *Job) GetLog() (io.ReadCloser, error) {
 		}
 	}
 
-	return nil, errors.New("Can not find running pod to extract logs")
+	return nil, errors.New("can not find running pod to extract logs")
 }
 
 // Delete job
@@ -115,8 +115,8 @@ func (j *Job) Delete() error {
 }
 
 // Create new job and start it
-func newJob(session *Session, name string) (*Job, error) {
-	jobTemplate := createJobTemplate(name)
+func newJobFromGitHub(session *Session, name string, spec *protocol.JobSpec) (*Job, error) {
+	jobTemplate := jobFromGitHubSpec(name, spec)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func newJob(session *Session, name string) (*Job, error) {
 	}, nil
 }
 
-func createJobTemplate(name string) *batchv1.Job {
+func jobFromGitHubSpec(name string, spec *protocol.JobSpec) *batchv1.Job {
 	backOffLimit := int32(2)
 
 	theJob := &batchv1.Job{
@@ -141,15 +141,22 @@ func createJobTemplate(name string) *batchv1.Job {
 
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &backOffLimit,
+
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyOnFailure,
+
 					Containers: []v1.Container{
 						{
-							Name:    MainContainer,
-							Command: []string{"echo"},
-							Args:    []string{"Hello World"},
-							Image:   MainImage,
+							Name: ContainerNameBuilder,
+							// TODO : introduce script here
+							Command: []string{"printenv"},
+							//Args:    []string{"Hello World"},
+
+							//
+							Image: spec.Image.Name,
+
+							Env: convertEnvVars(spec.Variables),
 						},
 					},
 				},
@@ -158,4 +165,17 @@ func createJobTemplate(name string) *batchv1.Job {
 	}
 
 	return theJob
+}
+
+func convertEnvVars(vars []protocol.JobVariable) []v1.EnvVar {
+	result := make([]v1.EnvVar, len(vars))
+
+	for i, v := range vars {
+		result[i] = v1.EnvVar{
+			Name:  v.Key,
+			Value: v.Value,
+		}
+	}
+
+	return result
 }

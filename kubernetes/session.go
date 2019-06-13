@@ -5,6 +5,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
+	"sisyphus/protocol"
 
 	// GCP Auth provider
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -15,10 +16,6 @@ type Session struct {
 	// Kubernetes namespace where all objects will be created
 	Namespace string
 	k8sClient *kubernetes.Clientset
-}
-
-type SessionInterface interface {
-	CreateJob(name string) (*Job, error)
 }
 
 // Start new kubernetes session with configuration from home directory
@@ -44,8 +41,8 @@ func CreateK8SSession(namespace string) (*Session, error) {
 }
 
 // Create new job template
-func (s *Session) CreateJob(name string) (*Job, error) {
-	job, err := newJob(s, name)
+func (s *Session) CreateGitLabJob(name string, spec *protocol.JobSpec) (*Job, error) {
+	job, err := newJobFromGitHub(s, name, spec)
 	if err != nil {
 		return nil, err
 	}

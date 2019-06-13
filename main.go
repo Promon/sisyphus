@@ -4,23 +4,49 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
+	"os"
 	"sisyphus/kubernetes"
+	"sisyphus/protocol"
 	"time"
 )
 
+func init() {
+	log.SetLevel(log.DebugLevel)
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors: true,
+	})
+	log.SetOutput(os.Stdout)
+}
+
 func main() {
+	log.Info("Hello.")
+
 	s, err := kubernetes.CreateK8SSession("default")
 	if err != nil {
-		panic(err.Error())
+		log.Panic(err)
 	}
 
-	job, err := s.CreateJob("testjob")
+	gitlabJob, err := loadSampleGitLabJob("protocol/testdata/job_spec.json")
 	if err != nil {
-		panic(err.Error())
+		log.Panic(err)
+	}
+
+	job, err := s.CreateGitLabJob("testjob", gitlabJob)
+	if err != nil {
+		log.Panic(err)
 	}
 	defer job.Delete()
 
+	//
+	//job, err := s.CreateJob("testjob")
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+	//defer job.Delete()
+	//
 	for i := 0; i < 100; i++ {
 		status, err := job.GetReadinessStatus()
 		if err != nil {
@@ -36,10 +62,10 @@ func main() {
 
 		time.Sleep(1 * time.Second)
 	}
-
+	//
 	rdr, err := job.GetLog()
 	if err != nil {
-		panic(err.Error())
+		log.Panic(err)
 	}
 	defer rdr.Close()
 
@@ -49,7 +75,7 @@ func main() {
 	}
 
 	if err := sc.Err(); err != nil {
-		panic(err.Error())
+		log.Panic(err.Error())
 	}
 }
 
@@ -60,4 +86,20 @@ func toJson(i interface{}) string {
 	}
 
 	return string(b)
+}
+
+func loadSampleGitLabJob(path string) (*protocol.JobSpec, error) {
+	log.Debugf("Loading %v", path)
+	jsonData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := protocol.ParseJobSpec(jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Successfully loaded %v", path)
+	return result, nil
 }
