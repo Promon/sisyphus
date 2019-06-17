@@ -2,7 +2,7 @@ stages:
   - build
 
 sample build:
-  image: golang:latest
+  image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
   stage: build
   script:
     - echo "Hello World !"

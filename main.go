@@ -1,25 +1,31 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
 	"os"
+	"os/signal"
 	"sisyphus/kubernetes"
 	"sisyphus/protocol"
+	"sisyphus/util"
+	"syscall"
 	"time"
 )
 
 func init() {
 	log.SetLevel(log.DebugLevel)
 	log.SetFormatter(&log.TextFormatter{
-		ForceColors: true,
+		ForceColors:   true,
+		FullTimestamp: true,
 	})
 	log.SetOutput(os.Stdout)
 }
+
+const runnerToken = "kxZppSfxQjM6aAmAoxjo"
+const (
+	// Limit for monitoring requests
+	BurstLimit = 5
+)
 
 func main() {
 	log.Info("Hello.")
@@ -29,77 +35,79 @@ func main() {
 		log.Panic(err)
 	}
 
-	gitlabJob, err := loadSampleGitLabJob("protocol/testdata/job_spec.json")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	job, err := s.CreateGitLabJob("testjob", gitlabJob)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer job.Delete()
-
-	//
-	//job, err := s.CreateJob("testjob")
+	//gitlabJob, err := loadSampleGitLabJob("protocol/testdata/job_spec.json")
 	//if err != nil {
-	//	panic(err.Error())
+	//	log.Panic(err)
 	//}
-	//defer job.Delete()
-	//
-	for i := 0; i < 100; i++ {
-		status, err := job.GetReadinessStatus()
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			s := toJson(status)
-			fmt.Println(s)
 
-			if status.PodPhaseCounts[v1.PodUnknown] == 0 && status.PodPhaseCounts[v1.PodPending] == 0 {
-				break
-			}
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-	//
-	rdr, err := job.GetLog()
+	httpSession, err := protocol.NewHttpSession("https://git.dev.promon.no")
 	if err != nil {
 		log.Panic(err)
 	}
-	defer rdr.Close()
 
-	sc := bufio.NewScanner(rdr)
-	for sc.Scan() {
-		fmt.Println(sc.Text())
+	nextJob, err := httpSession.PollNextJob(runnerToken)
+	if err != nil {
+		log.Panic(err)
 	}
 
-	if err := sc.Err(); err != nil {
-		log.Panic(err.Error())
+	if nextJob == nil {
+		// no new jobs to run
+		log.Info("No jobs to run")
+		os.Exit(0)
+	}
+
+	jobPreifx := fmt.Sprintf("sphs-%v-%v-", nextJob.JobInfo.ProjectId, nextJob.Id)
+	job, err := s.CreateGitLabJob(jobPreifx, nextJob)
+	if err != nil {
+		log.Panic(err)
+	}
+	//defer job.Delete()
+
+	workOk := make(chan bool, BurstLimit)
+
+	go util.MonitorJob(job, httpSession, nextJob.Id, nextJob.Token, workOk)
+
+	// Handle OS signals
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	// Ticker used to rate limit requests
+	ticktock := time.NewTicker(500 * time.Millisecond)
+
+	// Main event loop
+	for {
+		select {
+		case <-ticktock.C:
+			// Allocate 1 job monitoring cycle per tick
+			if len(workOk) < BurstLimit {
+				workOk <- true
+			}
+
+		case s := <-signals:
+			log.Debugf("Signal received %v", s)
+			close(workOk)
+			time.Sleep(5 * time.Second)
+			return
+
+		default:
+			log.Trace("No activity")
+			time.Sleep(1 * time.Second)
+		}
 	}
 }
 
-func toJson(i interface{}) string {
-	b, err := json.MarshalIndent(i, "", " ")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return string(b)
-}
-
-func loadSampleGitLabJob(path string) (*protocol.JobSpec, error) {
-	log.Debugf("Loading %v", path)
-	jsonData, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := protocol.ParseJobSpec(jsonData)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("Successfully loaded %v", path)
-	return result, nil
-}
+//func loadSampleGitLabJob(path string) (*protocol.JobSpec, error) {
+//	log.Debugf("Loading %v", path)
+//	jsonData, err := ioutil.ReadFile(path)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	result, err := protocol.ParseJobSpec(jsonData)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	log.Debugf("Successfully loaded %v", path)
+//	return result, nil
+//}

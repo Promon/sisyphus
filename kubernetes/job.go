@@ -8,6 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sisyphus/protocol"
+	"sisyphus/shell"
+	"time"
 )
 
 const ContainerNameBuilder = "builder"
@@ -15,18 +17,21 @@ const ContainerNameBuilder = "builder"
 type Job struct {
 	session *Session
 
-	// The submitted to the cluster
+	// The job submitted to the cluster
 	k8sJobTemplate *batchv1.Job
+
+	// Configmap with entrypoint script(s)
+	k8sEntrypointMap *v1.ConfigMap
 
 	// for faster access these values are copied from session
 	k8sClient *kubernetes.Clientset
 	namespace string
-	name      string
+	Name      string
 }
 
 // Get job status
 func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
-	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.name, metav1.GetOptions{})
+	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -35,13 +40,13 @@ func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
 }
 
 type ReadinessStatus struct {
-	Job            *batchv1.JobStatus
+	JobStatus      *batchv1.JobStatus
 	PodPhases      map[string]v1.PodPhase
 	PodPhaseCounts map[v1.PodPhase]int
 }
 
 func (j *Job) GetReadinessStatus() (*ReadinessStatus, error) {
-	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.name, metav1.GetOptions{})
+	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +89,7 @@ func (j *Job) GetReadinessStatus() (*ReadinessStatus, error) {
 }
 
 // Get logs stream
-func (j *Job) GetLog() (io.ReadCloser, error) {
+func (j *Job) GetLog(sinceTime *time.Time) (io.ReadCloser, error) {
 	controllerUid := j.k8sJobTemplate.GetUID()
 	pods, err := getPodsOfController(j.k8sClient, j.namespace, controllerUid)
 
@@ -96,7 +101,12 @@ func (j *Job) GetLog() (io.ReadCloser, error) {
 		for _, ctr := range pod.Spec.Containers {
 			if ctr.Name == ContainerNameBuilder {
 				logOpts := v1.PodLogOptions{
-					Container: ctr.Name,
+					Container:  ctr.Name,
+					Timestamps: true,
+				}
+
+				if sinceTime != nil {
+					logOpts.SinceTime = &metav1.Time{Time: *sinceTime}
 				}
 
 				req := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(pod.GetName(), &logOpts)
@@ -111,32 +121,61 @@ func (j *Job) GetLog() (io.ReadCloser, error) {
 // Delete job
 func (j *Job) Delete() error {
 	prop := metav1.DeletePropagationBackground
-	return j.k8sClient.BatchV1().Jobs(j.namespace).Delete(j.name, &metav1.DeleteOptions{PropagationPolicy: &prop})
+	defer j.k8sClient.CoreV1().ConfigMaps(j.namespace).Delete(j.k8sEntrypointMap.Name, &metav1.DeleteOptions{PropagationPolicy: &prop})
+	return j.k8sClient.BatchV1().Jobs(j.namespace).Delete(j.Name, &metav1.DeleteOptions{PropagationPolicy: &prop})
 }
 
 // Create new job and start it
-func newJobFromGitHub(session *Session, name string, spec *protocol.JobSpec) (*Job, error) {
-	jobTemplate := jobFromGitHubSpec(name, spec)
+func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec) (*Job, error) {
+	// Create config map volume with entrypoint script
+	script := shell.GenerateScript(spec)
+	entrypointTemplate := newEntryPointScript(script)
+
+	entrypoint, err := session.k8sClient.CoreV1().ConfigMaps(session.Namespace).Create(entrypointTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	jobTemplate := jobFromGitHubSpec(namePrefix, spec, entrypoint.Name)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Job{
-		session:        session,
-		k8sJobTemplate: k8sJob,
-		k8sClient:      session.k8sClient,
-		namespace:      session.Namespace,
-		name:           name,
+		session:          session,
+		k8sJobTemplate:   k8sJob,
+		k8sEntrypointMap: entrypoint,
+		k8sClient:        session.k8sClient,
+		namespace:        session.Namespace,
+		Name:             k8sJob.Name,
 	}, nil
 }
 
-func jobFromGitHubSpec(name string, spec *protocol.JobSpec) *batchv1.Job {
+func newEntryPointScript(script string) *v1.ConfigMap {
+
+	return &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "test-map-",
+		},
+
+		Data: map[string]string{
+			"entrypoint.sh": script,
+		},
+	}
+}
+
+const (
+	ConfigMapAccessMode int32 = 0744
+)
+
+func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName string) *batchv1.Job {
 	backOffLimit := int32(2)
+	accessMode := int32(ConfigMapAccessMode)
 
 	theJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			GenerateName: namePrefix,
 		},
 
 		Spec: batchv1.JobSpec{
@@ -150,14 +189,40 @@ func jobFromGitHubSpec(name string, spec *protocol.JobSpec) *batchv1.Job {
 						{
 							Name: ContainerNameBuilder,
 							// TODO : introduce script here
-							Command: []string{"printenv"},
+							Command: []string{"/jobscripts/entrypoint.sh"},
 							//Args:    []string{"Hello World"},
 
 							//
 							Image: spec.Image.Name,
 
 							Env: convertEnvVars(spec.Variables),
+
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "jobscripts",
+									MountPath: "/jobscripts",
+									ReadOnly:  true,
+								},
+							},
 						},
+					},
+					Volumes: []v1.Volume{
+						{
+							Name: "jobscripts",
+							VolumeSource: v1.VolumeSource{
+								ConfigMap: &v1.ConfigMapVolumeSource{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: entryPointName,
+									},
+
+									DefaultMode: &accessMode,
+								},
+							},
+						},
+					},
+
+					NodeSelector: map[string]string{
+						"cloud.google.com/gke-preemptible": "true",
 					},
 				},
 			},

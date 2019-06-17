@@ -32,11 +32,30 @@ type JobArtifact struct {
 	When  string   `json:"when"`
 }
 
+type JobGitInfo struct {
+	RepoUrl   string   `json:"repo_url"`
+	Ref       string   `json:"ref"`
+	Sha       string   `json:"sha"`
+	BeforeSha string   `json:"before_sha"`
+	RefType   string   `json:"ref_type"`
+	Refspecs  []string `json:"refspecs"`
+	Depth     int      `json:"depth"`
+}
+
+type JobInfo struct {
+	Name        string `json:"name"`
+	Stage       string `json:"stage"`
+	ProjectId   int    `json:"project_id"`
+	ProjectName string `json:"project_name"`
+}
+
 type JobSpec struct {
-	Id            int64         `json:"id"`
+	Id            int           `json:"id"`
+	JobInfo       JobInfo       `json:"job_info"`
 	Token         string        `json:"token"`
 	AllowGitFetch bool          `json:"allow_git_fetch"`
 	Image         JobImage      `json:"image"`
+	GitInfo       JobGitInfo    `json:"git_info"`
 	Variables     []JobVariable `json:"variables"`
 	Steps         []JobStep     `json:"steps"`
 	Artifacts     []JobArtifact `json:"artifacts"`
