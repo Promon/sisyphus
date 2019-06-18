@@ -5,9 +5,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
+	"sisyphus/jobmon"
 	"sisyphus/kubernetes"
 	"sisyphus/protocol"
-	"sisyphus/util"
 	"syscall"
 	"time"
 )
@@ -65,7 +65,7 @@ func main() {
 
 	workOk := make(chan bool, BurstLimit)
 
-	go util.MonitorJob(job, httpSession, nextJob.Id, nextJob.Token, workOk)
+	go jobmon.MonitorJob(job, httpSession, nextJob.Id, nextJob.Token, workOk)
 
 	// Handle OS signals
 	signals := make(chan os.Signal, 1)
@@ -95,19 +95,3 @@ func main() {
 		}
 	}
 }
-
-//func loadSampleGitLabJob(path string) (*protocol.JobSpec, error) {
-//	log.Debugf("Loading %v", path)
-//	jsonData, err := ioutil.ReadFile(path)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	result, err := protocol.ParseJobSpec(jsonData)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	log.Debugf("Successfully loaded %v", path)
-//	return result, nil
-//}

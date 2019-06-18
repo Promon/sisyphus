@@ -26,6 +26,7 @@ const (
 	PathApi        = "/api/v4"
 	PathJobMailBox = PathApi + "/jobs/request"
 	PathJobState   = PathApi + "/jobs/%d"
+	PathJobTrace   = PathJobState + "/trace"
 )
 
 type JobState string
@@ -136,14 +137,12 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 	if err != nil {
 		return nil, err
 	}
-	debugRequest(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
 		debugResponse(resp)
 		return nil, err
 	}
-	debugResponse(resp)
 	defer resp.Body.Close()
 
 	rstate := RemoteJobState{
@@ -152,6 +151,37 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 	}
 
 	return &rstate, nil
+}
+
+// Update Job logs
+func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []byte, startOffset int) error {
+	endOffset := startOffset + len(content)
+	path := fmt.Sprintf(PathJobTrace, jobId)
+	reqUrl, err := s.formatRequestUrl(path)
+
+	if err != nil {
+		return err
+	}
+
+	reqBody := bytes.NewReader(content)
+	req, err := http.NewRequest(http.MethodPatch, reqUrl.String(), reqBody)
+	if err != nil {
+		return err
+	}
+	debugRequest(req)
+
+	contentRange := fmt.Sprintf("%d-%d", startOffset, endOffset-1)
+	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Range", contentRange)
+	req.Header.Add("Job-Token", jobToken)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	debugResponse(resp)
+	return nil
 }
 
 func (s *RunnerHttpSession) formatRequestUrl(refPath string) (*url.URL, error) {

@@ -1,33 +1,12 @@
-package util
+package jobmon
 
 import (
-	"bufio"
-	"fmt"
 	"github.com/sirupsen/logrus"
-	"io"
 	v1 "k8s.io/api/core/v1"
 	"net/http"
 	k "sisyphus/kubernetes"
 	"sisyphus/protocol"
-	"strings"
-	"time"
 )
-
-type LogLine struct {
-	timestamp time.Time
-	text      string
-}
-
-type LogState struct {
-	lastSeenLine *LogLine
-}
-
-type GitlabBackChannel struct {
-	httpSession    *protocol.RunnerHttpSession
-	jobId          int
-	gitlabJobToken string
-	localLogger    *logrus.Entry
-}
 
 // Monitor job
 func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
@@ -36,7 +15,10 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			"jobName": job.Name,
 		})
 
-	logState := LogState{}
+	logState := LogState{
+		localLogger:       ctxLogger,
+		gitlabStartOffset: 0,
+	}
 
 	backChannel := GitlabBackChannel{
 		httpSession:    httpSession,
@@ -73,9 +55,23 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				return
 			}
 
-			err := logState.updateLogs(job)
+			// Fetch logs from K8S
+			err := logState.bufferLogs(job)
 			if err != nil {
 				ctxLogger.Warn(err)
+			}
+
+			// Push logs buffer to gitlab
+			if logState.logBuffer.Len() > 0 {
+				err = backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
+				if err != nil {
+					ctxLogger.Warn("Failed to send logs to gitlab")
+				} else {
+					// update next offset
+					logState.gitlabStartOffset = logState.gitlabStartOffset + logState.logBuffer.Len()
+					// reset buffer
+					logState.logBuffer.Reset()
+				}
 			}
 
 		} else {
@@ -102,53 +98,6 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	ctxLogger.Debugf("EOF")
 }
 
-func (ls *LogState) printLog(log io.ReadCloser) error {
-	sc := bufio.NewScanner(log)
-	for sc.Scan() {
-		timestamped := sc.Text()
-		parsed, err := parseLogLine(timestamped)
-		if err != nil {
-			return err
-		}
-
-		// skip lines older than last seen
-		if ls.lastSeenLine == nil || parsed.timestamp.After(ls.lastSeenLine.timestamp) {
-			// remember last line we seen
-			ls.lastSeenLine = parsed
-			fmt.Println(timestamped)
-		}
-	}
-
-	return nil
-}
-
-func (ls *LogState) updateLogs(job *k.Job) error {
-	var sinceTime *time.Time = nil
-
-	if ls.lastSeenLine != nil {
-		sinceTime = &ls.lastSeenLine.timestamp
-	}
-
-	rdr, err := job.GetLog(sinceTime)
-	if err != nil {
-		return err
-	}
-	defer rdr.Close()
-
-	return ls.printLog(rdr)
-}
-
-func (bc *GitlabBackChannel) syncJobStatus(state protocol.JobState) *protocol.RemoteJobState {
-	z, err := bc.httpSession.UpdateJobStatus(bc.jobId, bc.gitlabJobToken, state)
-
-	if err != nil {
-		bc.localLogger.Warn(err)
-		return nil
-	}
-
-	return z
-}
-
 func cancelRequested(state *protocol.RemoteJobState) bool {
 	switch {
 	case state == nil:
@@ -158,18 +107,4 @@ func cancelRequested(state *protocol.RemoteJobState) bool {
 	default:
 		return false
 	}
-}
-
-// Split log line to timestamp and text
-func parseLogLine(logLine string) (*LogLine, error) {
-	parts := strings.SplitN(logLine, " ", 2)
-	ts, err := time.Parse(time.RFC3339Nano, parts[0])
-	if err != nil {
-		return nil, err
-	}
-
-	return &LogLine{
-		timestamp: ts,
-		text:      parts[1],
-	}, nil
 }
