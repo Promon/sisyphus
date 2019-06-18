@@ -15,8 +15,14 @@ type ScriptContext struct {
 // Generate job script
 func GenerateScript(spec *protocol.JobSpec) string {
 	ctx := ScriptContext{}
-	ctx.printPrelude("test")
+
+	ctx.printPrelude(spec.JobInfo.Name)
 	ctx.printGitClone()
+
+	for _, step := range spec.Steps {
+		ctx.printJobStep(step)
+	}
+
 	return ctx.builder.String()
 }
 
@@ -55,4 +61,9 @@ func (s *ScriptContext) printGitClone() {
 	}
 
 	s.addLines(lines)
+}
+
+func (s *ScriptContext) printJobStep(step protocol.JobStep) {
+	s.printFLine("echo 'Step %s. %d commands'", step.Name, len(step.Script))
+	s.addLines(step.Script)
 }

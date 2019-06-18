@@ -6,6 +6,7 @@ sample build:
   stage: build
   script:
     - echo "Hello World !"
+    - go build -x
   tags:
     - golang
   artifacts:
