@@ -19,7 +19,7 @@ type LogLine struct {
 type LogState struct {
 	lastSeenLine      *LogLine
 	localLogger       *logrus.Entry
-	logBuffer         bytes.Buffer
+	logBuffer         *bytes.Buffer
 	gitlabStartOffset int
 }
 
@@ -55,11 +55,21 @@ func (ls *LogState) printLog(log io.ReadCloser) error {
 			// remember last line we seen
 			ls.lastSeenLine = parsed
 			//fmt.Println(timestamped)
-			fmt.Fprintln(&ls.logBuffer, timestamped)
+			fmt.Fprintln(ls.logBuffer, timestamped)
 		}
 	}
 
 	return nil
+}
+
+func newLogState(localLogger *logrus.Entry) *LogState {
+	var logBuff bytes.Buffer
+	return &LogState{
+		logBuffer:         &logBuff,
+		gitlabStartOffset: 0,
+		localLogger:       localLogger,
+		lastSeenLine:      nil,
+	}
 }
 
 // Split log line to timestamp and text

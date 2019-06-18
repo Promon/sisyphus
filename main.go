@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -30,42 +29,22 @@ const (
 func main() {
 	log.Info("Hello.")
 
-	s, err := kubernetes.CreateK8SSession("default")
+	k8sSession, err := kubernetes.CreateK8SSession("default")
 	if err != nil {
 		log.Panic(err)
 	}
-
-	//gitlabJob, err := loadSampleGitLabJob("protocol/testdata/job_spec.json")
-	//if err != nil {
-	//	log.Panic(err)
-	//}
 
 	httpSession, err := protocol.NewHttpSession("https://git.dev.promon.no")
 	if err != nil {
 		log.Panic(err)
 	}
 
-	nextJob, err := httpSession.PollNextJob(runnerToken)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	if nextJob == nil {
-		// no new jobs to run
-		log.Info("No jobs to run")
-		os.Exit(0)
-	}
-
-	jobPreifx := fmt.Sprintf("sphs-%v-%v-", nextJob.JobInfo.ProjectId, nextJob.Id)
-	job, err := s.CreateGitLabJob(jobPreifx, nextJob)
-	if err != nil {
-		log.Panic(err)
-	}
-	//defer job.Delete()
-
+	// Queue with ticks
 	workOk := make(chan bool, BurstLimit)
 
-	go jobmon.MonitorJob(job, httpSession, nextJob.Id, nextJob.Token, workOk)
+	// Queue for new jobs from gitlab
+	newJobs := make(chan *protocol.JobSpec, BurstLimit)
+	go nextJobLoop(httpSession, newJobs, workOk)
 
 	// Handle OS signals
 	signals := make(chan os.Signal, 1)
@@ -83,6 +62,9 @@ func main() {
 				workOk <- true
 			}
 
+		case j := <-newJobs:
+			go jobmon.RunJob(j, k8sSession, httpSession, workOk)
+
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
 			close(workOk)
@@ -94,4 +76,17 @@ func main() {
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+func nextJobLoop(httpSession *protocol.RunnerHttpSession, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
+	for range workOk {
+		nextJob, err := httpSession.PollNextJob(runnerToken)
+		if err != nil {
+			log.Warn(err)
+		} else if nextJob != nil {
+			newJobs <- nextJob
+		}
+	}
+
+	log.Info("Work fetch loop terminated")
 }

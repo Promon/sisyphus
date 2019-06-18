@@ -17,7 +17,11 @@ func GenerateScript(spec *protocol.JobSpec) string {
 	ctx := ScriptContext{}
 
 	ctx.printPrelude(spec.JobInfo.Name)
+
+	// GIT
 	ctx.printGitClone()
+	ctx.printGitCleanReset()
+	ctx.printGitCheckout()
 
 	for _, step := range spec.Steps {
 		ctx.printJobStep(step)
@@ -63,7 +67,29 @@ func (s *ScriptContext) printGitClone() {
 	s.addLines(lines)
 }
 
+func (s *ScriptContext) printGitCleanReset() {
+	lines := []string{
+		"rm -f '.git/index.lock'",
+		"rm -f '.git/shallow.lock'",
+		"rm -f '.git/HEAD.lock'",
+		"rm -f '.git/hooks/post-checkout'",
+		"git clean -ffdx",
+		"git reset --hard",
+	}
+
+	s.addLines(lines)
+}
+
+func (s *ScriptContext) printGitCheckout() {
+	lines := []string{
+		"echo \"Checking out ${CI_COMMIT_SHA}\"",
+		"git checkout -f -q ${CI_COMMIT_SHA}",
+	}
+
+	s.addLines(lines)
+}
+
 func (s *ScriptContext) printJobStep(step protocol.JobStep) {
-	s.printFLine("echo 'Step %s. %d commands'", step.Name, len(step.Script))
+	s.printFLine("echo 'Step %s has %d commands'", step.Name, len(step.Script))
 	s.addLines(step.Script)
 }

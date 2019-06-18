@@ -77,6 +77,7 @@ func (j *Job) GetReadinessStatus() (*ReadinessStatus, error) {
 		v1.PodFailed:    0,
 		v1.PodUnknown:   0,
 	}
+
 	for _, phase := range phases {
 		phaseCounts[phase] = phaseCounts[phase] + 1
 	}
@@ -129,7 +130,7 @@ func (j *Job) Delete() error {
 func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec) (*Job, error) {
 	// Create config map volume with entrypoint script
 	script := shell.GenerateScript(spec)
-	entrypointTemplate := newEntryPointScript(script)
+	entrypointTemplate := newEntryPointScript(namePrefix, script)
 
 	entrypoint, err := session.k8sClient.CoreV1().ConfigMaps(session.Namespace).Create(entrypointTemplate)
 	if err != nil {
@@ -152,11 +153,11 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 	}, nil
 }
 
-func newEntryPointScript(script string) *v1.ConfigMap {
+func newEntryPointScript(nameTemplate string, script string) *v1.ConfigMap {
 
 	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "test-map-",
+			GenerateName: nameTemplate,
 		},
 
 		Data: map[string]string{

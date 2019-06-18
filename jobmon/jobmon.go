@@ -1,6 +1,7 @@
 package jobmon
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"net/http"
@@ -8,17 +9,41 @@ import (
 	"sisyphus/protocol"
 )
 
+// Create job from descriptor and monitor loop
+func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol.RunnerHttpSession, workOk <-chan bool) {
+	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
+
+	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to create K8S job for project=%v, job=%v, job_id=%v",
+			spec.JobInfo.ProjectName,
+			spec.JobInfo.Name,
+			spec.Id)
+
+		logrus.Error(msg)
+		logrus.Error(err)
+		return
+	} else {
+		monitorJob(job, httpSession, spec.Id, spec.Token, workOk)
+	}
+}
+
 // Monitor job
-func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
+func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
 	ctxLogger := logrus.WithFields(
 		logrus.Fields{
 			"jobName": job.Name,
 		})
 
-	logState := LogState{
-		localLogger:       ctxLogger,
-		gitlabStartOffset: 0,
-	}
+	logState := newLogState(ctxLogger)
+
+	labLog := logrus.New()
+	labLog.SetLevel(logrus.DebugLevel)
+	labLog.SetFormatter(&logrus.TextFormatter{
+		ForceColors:   true,
+		FullTimestamp: true,
+	})
+	labLog.SetOutput(logState.logBuffer)
 
 	backChannel := GitlabBackChannel{
 		httpSession:    httpSession,
@@ -35,16 +60,25 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		}
 	}()
 
+	defer func() {
+		err := pushLogsToGitlab(logState, &backChannel)
+		if err != nil {
+			ctxLogger.Warn("Failed to push logs to gitlab")
+		}
+	}()
+
 	backChannel.syncJobStatus(protocol.Pending)
 
 	for range workOk {
 		status, err := job.GetReadinessStatus()
 		if err != nil {
-			logrus.Warn(err)
+			ctxLogger.Warn(err)
+			labLog.Warn(err)
 		}
 
 		js := status.JobStatus
 		ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
+		ctxLogger.Debugf("Pod Phases %v", status.PodPhases)
 
 		if status.PodPhaseCounts[v1.PodPending] == 0 && status.PodPhaseCounts[v1.PodUnknown] == 0 {
 
@@ -59,26 +93,15 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			err := logState.bufferLogs(job)
 			if err != nil {
 				ctxLogger.Warn(err)
+				labLog.Warn(err)
 			}
-
-			// Push logs buffer to gitlab
-			if logState.logBuffer.Len() > 0 {
-				err = backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
-				if err != nil {
-					ctxLogger.Warn("Failed to send logs to gitlab")
-				} else {
-					// update next offset
-					logState.gitlabStartOffset = logState.gitlabStartOffset + logState.logBuffer.Len()
-					// reset buffer
-					logState.logBuffer.Reset()
-				}
-			}
-
 		} else {
 			status := backChannel.syncJobStatus(protocol.Pending)
 			if cancelRequested(status) {
 				ctxLogger.Info("Job canceled")
 				return
+			} else {
+				labLog.Info("PENDING")
 			}
 		}
 
@@ -91,11 +114,32 @@ func MonitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			return
 		}
 
+		// Push logs buffer to gitlab
+		err = pushLogsToGitlab(logState, &backChannel)
+		if err != nil {
+			ctxLogger.Warn("Failed to push logs to gitlab")
+		}
 	}
 
 	// Out of loop means the runner is killed
 	backChannel.syncJobStatus(protocol.Failed)
 	ctxLogger.Debugf("EOF")
+}
+
+func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error {
+	if logState.logBuffer.Len() > 0 {
+		err := backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
+		if err != nil {
+			return err
+		} else {
+			// update next offset
+			logState.gitlabStartOffset = logState.gitlabStartOffset + logState.logBuffer.Len()
+			// reset buffer
+			logState.logBuffer.Reset()
+		}
+	}
+
+	return nil
 }
 
 func cancelRequested(state *protocol.RemoteJobState) bool {

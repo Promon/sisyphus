@@ -54,8 +54,6 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 		return nil, err
 	}
 
-	debugRequest(req)
-
 	resp, err := s.client.Do(req)
 	if err != nil {
 		debugResponse(resp)
@@ -65,14 +63,12 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 
 	// No new jobs
 	if resp.StatusCode == http.StatusNoContent {
-		debugResponse(resp)
 		return nil, nil
 	}
 
 	// Gitlab answers with 201 Created for new jobs
 	if resp.StatusCode == http.StatusCreated {
 		body, err := ioutil.ReadAll(resp.Body)
-		debugResponse(resp)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +81,6 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 		return spec, nil
 	}
 
-	debugResponse(resp)
 	return nil, errors.New(fmt.Sprintf("Unknown response code %v", resp.StatusCode))
 }
 
@@ -140,7 +135,6 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		debugResponse(resp)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -168,19 +162,17 @@ func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []by
 	if err != nil {
 		return err
 	}
-	debugRequest(req)
 
 	contentRange := fmt.Sprintf("%d-%d", startOffset, endOffset-1)
 	req.Header.Add("Content-Type", "text/plain")
 	req.Header.Add("Content-Range", contentRange)
 	req.Header.Add("Job-Token", jobToken)
 
-	resp, err := s.client.Do(req)
+	_, err = s.client.Do(req)
 	if err != nil {
 		return err
 	}
 
-	debugResponse(resp)
 	return nil
 }
 
