@@ -1,11 +1,10 @@
 stages:
+  - prepare
   - build
 
-sample build:
+sample prepare:
   image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
-  stage: build
-  variables:
-    GIT_STRATEGY: none
+  stage: prepare
   script:
     - echo "Hello World !"
 #    - go build -x
@@ -26,19 +25,25 @@ sample build:
     policy: pull-push
     key: shielder-main-cache
 
-#sample build with after:
-#  image: golang:latest
-#  stage: build
-#  script:
-#    - echo "Hello World !"
-#    - printenv
-#  after_script:
-#    - exit 0
-#  tags:
-#    - golang
-#  artifacts:
-#    when: on_success
-#    expire_in: 1 day
-#    paths:
-#      - /tmp/buildx*
-#      - /tmp/hello*
+sample build:
+  image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
+  stage: build
+  script:
+    - ls -lah
+  tags:
+    - golang
+  dependencies:
+    - sample prepare
+  artifacts:
+    when: on_success
+    expire_in: 1 day
+    paths:
+      - ./README.md
+      - ./skaffold.yaml
+      - ./dockerfiles/*
+  cache:
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+    policy: pull-push
+    key: shielder-main-cache

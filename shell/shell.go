@@ -16,15 +16,19 @@ type ScriptContext struct {
 
 // Generate job script
 func GenerateScript(spec *protocol.JobSpec) string {
-
+	env := getVars(spec)
 	ctx := ScriptContext{}
 
 	ctx.printPrelude(spec.JobInfo.Name)
 
 	// GIT
-	ctx.printGitClone()
-	ctx.printGitCleanReset()
-	ctx.printGitCheckout()
+	if env["GIT_STRATEGY"] == "none" {
+		ctx.addFline("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
+	} else {
+		ctx.printGitClone()
+		ctx.printGitCleanReset()
+		ctx.printGitCheckout()
+	}
 
 	// Steps from YAML
 	for _, step := range spec.Steps {
@@ -37,6 +41,16 @@ func GenerateScript(spec *protocol.JobSpec) string {
 	}
 
 	return ctx.builder.String()
+}
+
+func getVars(spec *protocol.JobSpec) map[string]string {
+	r := make(map[string]string)
+
+	for _, v := range spec.Variables {
+		r[v.Key] = v.Value
+	}
+
+	return r
 }
 
 func (s *ScriptContext) addFline(format string, a ...interface{}) {
@@ -115,7 +129,7 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 	s.addFline(zipCommand)
 
 	// Upload
-	uploadLines := genUploadSnippet(artifact, jobId, jobToken, zipFile)
+	uploadLines := genUploadArtifactSnippet(artifact, jobId, jobToken, zipFile)
 	s.addLines(uploadLines)
 
 	// Cleanup
@@ -126,7 +140,7 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 	s.addLines(lines)
 }
 
-func genUploadSnippet(artifact *protocol.JobArtifact, jobId int, jobToken string, localFilePath string) []string {
+func genUploadArtifactSnippet(artifact *protocol.JobArtifact, jobId int, jobToken string, localFilePath string) []string {
 	q := url.Values{}
 	if len(artifact.ExpireIn) > 0 {
 		q.Set("expire_in", artifact.ExpireIn)
