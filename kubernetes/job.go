@@ -39,13 +39,16 @@ func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
 	return &sj.Status, nil
 }
 
-type ReadinessStatus struct {
-	JobStatus      *batchv1.JobStatus
+type K8SJobStatus struct {
+	JobStatus *batchv1.JobStatus
+
+	// Comprehensive pod status
+	Pods           []v1.Pod
 	PodPhases      map[string]v1.PodPhase
 	PodPhaseCounts map[v1.PodPhase]int
 }
 
-func (j *Job) GetReadinessStatus() (*ReadinessStatus, error) {
+func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
 	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -82,10 +85,11 @@ func (j *Job) GetReadinessStatus() (*ReadinessStatus, error) {
 		phaseCounts[phase] = phaseCounts[phase] + 1
 	}
 
-	return &ReadinessStatus{
-		&sj.Status,
-		phases,
-		phaseCounts,
+	return &K8SJobStatus{
+		JobStatus:      &sj.Status,
+		Pods:           pods,
+		PodPhases:      phases,
+		PodPhaseCounts: phaseCounts,
 	}, nil
 }
 

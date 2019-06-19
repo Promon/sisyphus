@@ -7,6 +7,7 @@ import (
 	"net/http"
 	k "sisyphus/kubernetes"
 	"sisyphus/protocol"
+	"strings"
 )
 
 // Create job from descriptor and monitor loop
@@ -28,7 +29,7 @@ func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol
 	}
 }
 
-// Monitor job
+// Monitor job loop
 func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
 	ctxLogger := logrus.WithFields(
 		logrus.Fields{
@@ -72,7 +73,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	backChannel.syncJobStatus(protocol.Pending)
 
 	for range workOk {
-		status, err := job.GetReadinessStatus()
+		status, err := job.GetK8SJobStatus()
 		if err != nil {
 			ctxLogger.Warn(err)
 			labLog.Warn(err)
@@ -83,7 +84,6 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		ctxLogger.Debugf("Pod Phases %v", status.PodPhases)
 
 		if status.PodPhaseCounts[v1.PodPending] == 0 && status.PodPhaseCounts[v1.PodUnknown] == 0 {
-
 			// Job canceled remotely
 			status := backChannel.syncJobStatus(protocol.Running)
 			if cancelRequested(status) {
@@ -98,12 +98,13 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				labLog.Warn(err)
 			}
 		} else {
-			status := backChannel.syncJobStatus(protocol.Pending)
-			if cancelRequested(status) {
+			gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
+			if cancelRequested(gitlabStatus) {
 				ctxLogger.Info("Job canceled")
 				return
 			} else {
-				labLog.Info("PENDING")
+				podInfo := podInfoMessage(status.Pods)
+				labLog.Infof("PENDING %s", podInfo)
 			}
 		}
 
@@ -156,4 +157,22 @@ func cancelRequested(state *protocol.RemoteJobState) bool {
 	default:
 		return false
 	}
+}
+
+func podInfoMessage(pods []v1.Pod) string {
+	perpod := make([]string, len(pods))
+
+	for i, pod := range pods {
+		var podState string
+		if len(pod.Status.Conditions) == 0 {
+			podState = "Unknown"
+		} else {
+			podState = string(pod.Status.Conditions[0].Type)
+		}
+
+		line := fmt.Sprintf("[%s: %s]", pod.Name, podState)
+		perpod[i] = line
+	}
+
+	return strings.Join(perpod, ", ")
 }
