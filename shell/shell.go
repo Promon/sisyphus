@@ -23,8 +23,14 @@ func GenerateScript(spec *protocol.JobSpec) string {
 	ctx.printGitCleanReset()
 	ctx.printGitCheckout()
 
+	// Steps from YAML
 	for _, step := range spec.Steps {
 		ctx.printJobStep(step)
+	}
+
+	// Upload artifacts
+	for _, artifact := range spec.Artifacts {
+		ctx.printUploadArtifact(&artifact)
 	}
 
 	return ctx.builder.String()
@@ -92,4 +98,20 @@ func (s *ScriptContext) printGitCheckout() {
 func (s *ScriptContext) printJobStep(step protocol.JobStep) {
 	s.printFLine("echo 'Step %s has %d commands'", step.Name, len(step.Script))
 	s.addLines(step.Script)
+}
+
+func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact) {
+	s.printFLine("TMPDIR=$(mktemp -d)")
+
+	// ZIP command
+	inFiles := strings.Join(artifact.Paths, " ")
+	zipCommand := fmt.Sprintf("zip -p ${TMPDIR}/artifact.zip %s", inFiles)
+	s.printFLine(zipCommand)
+
+	lines := []string{
+		"(cd ${TMPDIR} && ls -lah)",
+		"unset TMPDIR",
+	}
+
+	s.addLines(lines)
 }

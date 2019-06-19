@@ -6,7 +6,7 @@ sample build:
   stage: build
   script:
     - echo "Hello World !"
-    - go build -x
+#    - go build -x
     - ls -lah
   tags:
     - golang
@@ -14,8 +14,9 @@ sample build:
     when: on_success
     expire_in: 1 day
     paths:
-      - /tmp/buildx*
-      - /tmp/hello*
+      - ./README.md
+      - ./skaffold.yaml
+      - ./dockerfiles/*
   cache:
     paths:
       - .gradle/wrapper

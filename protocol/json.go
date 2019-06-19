@@ -28,8 +28,10 @@ type JobCache struct {
 }
 
 type JobArtifact struct {
-	Paths []string `json:"paths"`
-	When  string   `json:"when"`
+	Name     string   `json:"name"`
+	Paths    []string `json:"paths"`
+	When     string   `json:"when"`
+	ExpireIn string   `json:"expire_in"`
 }
 
 type JobGitInfo struct {
