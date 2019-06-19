@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -22,8 +23,10 @@ func Test_parse_X(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = ParseJobSpec(jsonData)
+	spec, err := ParseJobSpec(jsonData)
 	if err != nil {
 		t.Error(err)
 	}
+
+	fmt.Println(spec)
 }

@@ -15,7 +15,7 @@ type ScriptContext struct {
 }
 
 // Generate job script
-func GenerateScript(spec *protocol.JobSpec) string {
+func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	env := getVars(spec)
 	ctx := ScriptContext{}
 
@@ -28,6 +28,16 @@ func GenerateScript(spec *protocol.JobSpec) string {
 		ctx.printGitClone()
 		ctx.printGitCleanReset()
 		ctx.printGitCheckout()
+	}
+
+	// Download caches
+	for _, cache := range spec.Cache {
+		if cache.Policy == protocol.CachePolicyPull ||
+			cache.Policy == protocol.CachePolicyPullPush ||
+			cache.Policy == protocol.CachePolicyUndefined {
+
+			ctx.printDownloadCache(&cache, cacheBucketName, spec.JobInfo.ProjectName)
+		}
 	}
 
 	// Download dependencies
@@ -43,6 +53,13 @@ func GenerateScript(spec *protocol.JobSpec) string {
 	// Upload artifacts
 	for _, artifact := range spec.Artifacts {
 		ctx.printUploadArtifact(&artifact, spec.Id, spec.Token)
+	}
+
+	// Upload caches
+	for _, cache := range spec.Cache {
+		if cache.Policy != protocol.CachePolicyPull {
+			ctx.printUploadCache(&cache, cacheBucketName, spec.JobInfo.ProjectName)
+		}
 	}
 
 	return ctx.builder.String()
@@ -186,4 +203,35 @@ func genDownloadArtifactsSnippet(dep *protocol.JobDependency, outputFile string)
 	return []string{
 		curlCmd,
 	}
+}
+
+func makeCacheUrl(cacheBucketName string, projectName string, cacheKey string) string {
+	return fmt.Sprintf("gs://%s/%s/%s.tar.gz", cacheBucketName, projectName, cacheKey)
+}
+
+func (s *ScriptContext) printDownloadCache(cache *protocol.JobCache, cacheBucketName string, projectName string) {
+	cUrl := makeCacheUrl(cacheBucketName, projectName, cache.Key)
+	line := fmt.Sprintf("(gsutil cat %s | tar -zx) || echo \"No cache file found %s\"", cUrl, cUrl)
+
+	lines := []string{
+		fmt.Sprintf("echo \"Downloading cache %s from %s\"", cache.Key, cUrl),
+		line,
+	}
+
+	s.addLines(lines)
+}
+
+func (s *ScriptContext) printUploadCache(cache *protocol.JobCache, cacheBucketName string, projectName string) {
+	cUrl := makeCacheUrl(cacheBucketName, projectName, cache.Key)
+	inDirs := strings.Join(cache.Paths, " ")
+
+	tarCmd := fmt.Sprintf("tar -cz %s", inDirs)
+	line := fmt.Sprintf("(%s | gsutil cp - %s) || true", tarCmd, cUrl)
+
+	lines := []string{
+		fmt.Sprintf("echo \"Uploading cache %s to %s\"", cache.Key, cUrl),
+		line,
+	}
+
+	s.addLines(lines)
 }

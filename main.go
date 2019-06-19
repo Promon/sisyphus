@@ -23,7 +23,8 @@ func init() {
 const runnerToken = "kxZppSfxQjM6aAmAoxjo"
 const (
 	// Limit for monitoring requests
-	BurstLimit = 5
+	BurstLimit  = 5
+	CacheBucket = "gitlab_ci_cache"
 )
 
 func main() {
@@ -63,7 +64,7 @@ func main() {
 			}
 
 		case j := <-newJobs:
-			go jobmon.RunJob(j, k8sSession, httpSession, workOk)
+			go jobmon.RunJob(j, k8sSession, httpSession, CacheBucket, workOk)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)

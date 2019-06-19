@@ -2,13 +2,16 @@ stages:
   - prepare
   - build
 
+image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:a588b56-dirty
+
 sample prepare:
-  image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
   stage: prepare
   script:
     - echo "Hello World !"
-#    - go build -x
-    - ls -lah
+    - mkdir -p ./.go
+    - export GOPATH=$(realpath ./.go)
+    - ls -Rlah ./.go
+    - go build -x
   tags:
     - golang
   artifacts:
@@ -20,13 +23,11 @@ sample prepare:
       - ./dockerfiles/*
   cache:
     paths:
-      - .gradle/wrapper
-      - .gradle/caches
+      - .go/
     policy: pull-push
-    key: shielder-main-cache
+    key: sisyphus-cache
 
 sample build:
-  image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
   stage: build
 
   variables:

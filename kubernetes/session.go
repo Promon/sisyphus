@@ -41,8 +41,8 @@ func CreateK8SSession(namespace string) (*Session, error) {
 }
 
 // Create new job template
-func (s *Session) CreateGitLabJob(namePrefix string, spec *protocol.JobSpec) (*Job, error) {
-	job, err := newJobFromGitLab(s, namePrefix, spec)
+func (s *Session) CreateGitLabJob(namePrefix string, spec *protocol.JobSpec, cacheBucket string) (*Job, error) {
+	job, err := newJobFromGitLab(s, namePrefix, spec, cacheBucket)
 	if err != nil {
 		return nil, err
 	}

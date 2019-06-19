@@ -10,10 +10,10 @@ import (
 )
 
 // Create job from descriptor and monitor loop
-func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol.RunnerHttpSession, workOk <-chan bool) {
+func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
 	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
 
-	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec)
+	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec, cacheBucket)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to create K8S job for project=%v, job=%v, job_id=%v",
 			spec.JobInfo.ProjectName,

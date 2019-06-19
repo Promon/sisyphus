@@ -127,9 +127,9 @@ func (j *Job) Delete() error {
 }
 
 // Create new job and start it
-func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec) (*Job, error) {
+func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, cacheBucket string) (*Job, error) {
 	// Create config map volume with entrypoint script
-	script := shell.GenerateScript(spec)
+	script := shell.GenerateScript(spec, cacheBucket)
 	entrypointTemplate := newEntryPointScript(namePrefix, script)
 
 	entrypoint, err := session.k8sClient.CoreV1().ConfigMaps(session.Namespace).Create(entrypointTemplate)

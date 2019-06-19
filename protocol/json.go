@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 )
 
 type JobImage struct {
@@ -24,10 +23,19 @@ type JobStep struct {
 	AllowFailure   bool     `json:"allow_failure"`
 }
 
+type CachePolicy string
+
+const (
+	CachePolicyUndefined CachePolicy = ""
+	CachePolicyPullPush  CachePolicy = "pull-push"
+	CachePolicyPull      CachePolicy = "pull"
+	CachePolicyPush      CachePolicy = "push"
+)
+
 type JobCache struct {
-	Key    string   `json:"key"`
-	Paths  []string `json:"paths"`
-	Policy string   `json:"policy"`
+	Key    string      `json:"key"`
+	Paths  []string    `json:"paths"`
+	Policy CachePolicy `json:"policy"`
 }
 
 type JobArtifact struct {
@@ -76,8 +84,6 @@ type JobSpec struct {
 }
 
 func ParseJobSpec(jsonData []byte) (*JobSpec, error) {
-	logrus.Debug(string(jsonData))
-
 	var spec JobSpec
 	err := json.Unmarshal(jsonData, &spec)
 	if err != nil {

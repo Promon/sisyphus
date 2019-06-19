@@ -7,6 +7,6 @@ import (
 )
 
 func TestGenerateScript(t *testing.T) {
-	script := GenerateScript(&protocol.JobSpec{})
+	script := GenerateScript(&protocol.JobSpec{}, "TEST")
 	fmt.Println(script)
 }
