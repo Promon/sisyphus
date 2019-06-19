@@ -28,19 +28,16 @@ sample prepare:
 sample build:
   image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
   stage: build
+
+  variables:
+    GIT_STRATEGY: none
+
   script:
     - ls -lah
   tags:
     - golang
   dependencies:
     - sample prepare
-  artifacts:
-    when: on_success
-    expire_in: 1 day
-    paths:
-      - ./README.md
-      - ./skaffold.yaml
-      - ./dockerfiles/*
   cache:
     paths:
       - .gradle/wrapper

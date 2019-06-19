@@ -30,6 +30,11 @@ func GenerateScript(spec *protocol.JobSpec) string {
 		ctx.printGitCheckout()
 	}
 
+	// Download dependencies
+	for _, dep := range spec.Dependencies {
+		ctx.printDownloadDependency(&dep)
+	}
+
 	// Steps from YAML
 	for _, step := range spec.Steps {
 		ctx.printJobStep(step)
@@ -123,7 +128,6 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 
 	// ZIP command
 	inFiles := strings.Join(artifact.Paths, " ")
-
 	zipFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
 	zipCommand := fmt.Sprintf("zip -p %s %s", zipFile, inFiles)
 	s.addFline(zipCommand)
@@ -134,7 +138,27 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 
 	// Cleanup
 	lines := []string{
-		fmt.Sprintf("(rm %s) || true", zipFile),
+		fmt.Sprintf("(rm -rf ${TMPDIR}) || true"),
+		"unset TMPDIR",
+	}
+	s.addLines(lines)
+}
+
+func (s *ScriptContext) printDownloadDependency(dep *protocol.JobDependency) {
+	s.addFline("TMPDIR=$(mktemp -d)")
+
+	// Download
+	dlFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
+	dlLines := genDownloadArtifactsSnippet(dep, dlFile)
+	s.addLines(dlLines)
+
+	// Unzip
+	unzipCommand := fmt.Sprintf("unzip -o %s", dlFile)
+	s.addFline(unzipCommand)
+
+	// cleanup
+	lines := []string{
+		fmt.Sprintf("(rm -rf ${TMPDIR}) || true"),
 		"unset TMPDIR",
 	}
 	s.addLines(lines)
@@ -149,6 +173,15 @@ func genUploadArtifactSnippet(artifact *protocol.JobArtifact, jobId int, jobToke
 	// Upload command
 	postUrl := fmt.Sprintf("${CI_API_V4_URL}/jobs/%d/artifacts?%s", jobId, q.Encode())
 	curlCmd := fmt.Sprintf("curl -H \"JOB-TOKEN: %s\" -F \"file=@%s\" %s", jobToken, localFilePath, postUrl)
+
+	return []string{
+		curlCmd,
+	}
+}
+
+func genDownloadArtifactsSnippet(dep *protocol.JobDependency, outputFile string) []string {
+	getUrl := fmt.Sprintf("${CI_API_V4_URL}/jobs/%d/artifacts", dep.Id)
+	curlCmd := fmt.Sprintf("curl -H \"JOB-TOKEN: %s\" --output \"%s\" %s", dep.Token, outputFile, getUrl)
 
 	return []string{
 		curlCmd,

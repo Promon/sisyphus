@@ -1,6 +1,9 @@
 package protocol
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/sirupsen/logrus"
+)
 
 type JobImage struct {
 	Name string `json:"name"`
@@ -51,20 +54,30 @@ type JobInfo struct {
 	ProjectName string `json:"project_name"`
 }
 
+// Artifact dependency
+type JobDependency struct {
+	Id    int    `json:"id"`
+	Name  string `json:"name"`
+	Token string `json:"token"`
+}
+
 type JobSpec struct {
-	Id            int           `json:"id"`
-	JobInfo       JobInfo       `json:"job_info"`
-	Token         string        `json:"token"`
-	AllowGitFetch bool          `json:"allow_git_fetch"`
-	Image         JobImage      `json:"image"`
-	GitInfo       JobGitInfo    `json:"git_info"`
-	Variables     []JobVariable `json:"variables"`
-	Steps         []JobStep     `json:"steps"`
-	Artifacts     []JobArtifact `json:"artifacts"`
-	Cache         []JobCache    `json:"cache"`
+	Id            int             `json:"id"`
+	JobInfo       JobInfo         `json:"job_info"`
+	Token         string          `json:"token"`
+	AllowGitFetch bool            `json:"allow_git_fetch"`
+	Image         JobImage        `json:"image"`
+	GitInfo       JobGitInfo      `json:"git_info"`
+	Variables     []JobVariable   `json:"variables"`
+	Steps         []JobStep       `json:"steps"`
+	Artifacts     []JobArtifact   `json:"artifacts"`
+	Dependencies  []JobDependency `json:"dependencies"`
+	Cache         []JobCache      `json:"cache"`
 }
 
 func ParseJobSpec(jsonData []byte) (*JobSpec, error) {
+	logrus.Debug(string(jsonData))
+
 	var spec JobSpec
 	err := json.Unmarshal(jsonData, &spec)
 	if err != nil {

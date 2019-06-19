@@ -1,6 +1,6 @@
 {
-  "id": 164558,
-  "token": "ux425NLkkXoVbETrZvc8",
+  "id": 164562,
+  "token": "t-Efn72qxDCqkG1QYD2f",
   "allow_git_fetch": true,
   "job_info": {
     "name": "sample build",
@@ -9,10 +9,10 @@
     "project_name": "sisyphus"
   },
   "git_info": {
-    "repo_url": "https://gitlab-ci-token:ux425NLkkXoVbETrZvc8@git.dev.promon.no/andreas/sisyphus.git",
+    "repo_url": "https://gitlab-ci-token:t-Efn72qxDCqkG1QYD2f@git.dev.promon.no/andreas/sisyphus.git",
     "ref": "master",
-    "sha": "9409757f364fbf90776d3fb5b18a3b963f6b57bf",
-    "before_sha": "30b0a7c455994783e1b8c7b9a5fefc4948f8e5ae",
+    "sha": "6a8ead21dd76469cbcf900a59dc7e93ef2670106",
+    "before_sha": "8a7986270978926c2f0a8c8b7c6fa6b93c9757bb",
     "ref_type": "branch",
     "refspecs": [
       "+refs/heads/*:refs/remotes/origin/*",
@@ -27,43 +27,43 @@
   "variables": [
     {
       "key": "CI_PIPELINE_ID",
-      "value": "9539",
+      "value": "9542",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_PIPELINE_URL",
-      "value": "https://git.dev.promon.no/andreas/sisyphus/pipelines/9539",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/pipelines/9542",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_ID",
-      "value": "164558",
+      "value": "164562",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_URL",
-      "value": "https://git.dev.promon.no/andreas/sisyphus/-/jobs/164558",
+      "value": "https://git.dev.promon.no/andreas/sisyphus/-/jobs/164562",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_JOB_TOKEN",
-      "value": "ux425NLkkXoVbETrZvc8",
+      "value": "t-Efn72qxDCqkG1QYD2f",
       "public": false,
       "masked": true
     },
     {
       "key": "CI_BUILD_ID",
-      "value": "164558",
+      "value": "164562",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_BUILD_TOKEN",
-      "value": "ux425NLkkXoVbETrZvc8",
+      "value": "t-Efn72qxDCqkG1QYD2f",
       "public": false,
       "masked": true
     },
@@ -75,13 +75,13 @@
     },
     {
       "key": "CI_REGISTRY_PASSWORD",
-      "value": "ux425NLkkXoVbETrZvc8",
+      "value": "t-Efn72qxDCqkG1QYD2f",
       "public": false,
       "masked": true
     },
     {
       "key": "CI_REPOSITORY_URL",
-      "value": "https://gitlab-ci-token:ux425NLkkXoVbETrZvc8@git.dev.promon.no/andreas/sisyphus.git",
+      "value": "https://gitlab-ci-token:t-Efn72qxDCqkG1QYD2f@git.dev.promon.no/andreas/sisyphus.git",
       "public": false,
       "masked": false
     },
@@ -153,19 +153,19 @@
     },
     {
       "key": "CI_COMMIT_SHA",
-      "value": "9409757f364fbf90776d3fb5b18a3b963f6b57bf",
+      "value": "6a8ead21dd76469cbcf900a59dc7e93ef2670106",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_COMMIT_SHORT_SHA",
-      "value": "9409757f",
+      "value": "6a8ead21",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_COMMIT_BEFORE_SHA",
-      "value": "30b0a7c455994783e1b8c7b9a5fefc4948f8e5ae",
+      "value": "8a7986270978926c2f0a8c8b7c6fa6b93c9757bb",
       "public": true,
       "masked": false
     },
@@ -189,13 +189,13 @@
     },
     {
       "key": "CI_BUILD_REF",
-      "value": "9409757f364fbf90776d3fb5b18a3b963f6b57bf",
+      "value": "6a8ead21dd76469cbcf900a59dc7e93ef2670106",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_BUILD_BEFORE_SHA",
-      "value": "30b0a7c455994783e1b8c7b9a5fefc4948f8e5ae",
+      "value": "8a7986270978926c2f0a8c8b7c6fa6b93c9757bb",
       "public": true,
       "masked": false
     },
@@ -285,7 +285,7 @@
     },
     {
       "key": "CI_PIPELINE_IID",
-      "value": "16",
+      "value": "19",
       "public": true,
       "masked": false
     },
@@ -303,13 +303,13 @@
     },
     {
       "key": "CI_COMMIT_MESSAGE",
-      "value": "Script for upload of artifacts\n",
+      "value": "Download artifacts wip\n",
       "public": true,
       "masked": false
     },
     {
       "key": "CI_COMMIT_TITLE",
-      "value": "Script for upload of artifacts",
+      "value": "Download artifacts wip",
       "public": true,
       "masked": false
     },
@@ -334,12 +334,6 @@
     {
       "key": "CI_RUNNER_TAGS",
       "value": "golang, sisyphus",
-      "public": true,
-      "masked": false
-    },
-    {
-      "key": "GIT_STRATEGY",
-      "value": "none",
       "public": true,
       "masked": false
     },
@@ -372,7 +366,6 @@
     {
       "name": "script",
       "script": [
-        "echo \"Hello World !\"",
         "ls -lah"
       ],
       "timeout": 3600,
@@ -413,7 +406,17 @@
     }
   ],
   "credentials": [],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "id": 164561,
+      "name": "sample prepare",
+      "token": "133-xsycmhXxevy6Huht",
+      "artifacts_file": {
+        "filename": "artifacts.zip",
+        "size": 711
+      }
+    }
+  ],
   "features": {
     "trace_sections": true
   }
