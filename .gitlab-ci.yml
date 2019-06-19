@@ -4,6 +4,8 @@ stages:
 sample build:
   image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:eb14f0f-dirty
   stage: build
+  variables:
+    GIT_STRATEGY: none
   script:
     - echo "Hello World !"
 #    - go build -x

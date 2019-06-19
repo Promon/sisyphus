@@ -2,11 +2,13 @@ package shell
 
 import (
 	"fmt"
+	"net/url"
 	"sisyphus/protocol"
 	"strings"
 )
 
 // Shell script generator
+const DefaultUploadName = "artifacts"
 
 type ScriptContext struct {
 	builder strings.Builder
@@ -14,6 +16,7 @@ type ScriptContext struct {
 
 // Generate job script
 func GenerateScript(spec *protocol.JobSpec) string {
+
 	ctx := ScriptContext{}
 
 	ctx.printPrelude(spec.JobInfo.Name)
@@ -30,13 +33,13 @@ func GenerateScript(spec *protocol.JobSpec) string {
 
 	// Upload artifacts
 	for _, artifact := range spec.Artifacts {
-		ctx.printUploadArtifact(&artifact)
+		ctx.printUploadArtifact(&artifact, spec.Id, spec.Token)
 	}
 
 	return ctx.builder.String()
 }
 
-func (s *ScriptContext) printFLine(format string, a ...interface{}) {
+func (s *ScriptContext) addFline(format string, a ...interface{}) {
 	fmt.Fprintf(&s.builder, format, a...)
 	fmt.Fprintln(&s.builder)
 }
@@ -48,17 +51,18 @@ func (s *ScriptContext) addLines(lines []string) {
 }
 
 func (s *ScriptContext) printPrelude(projectName string) {
-	lines := []string{"#!/usr/bin/env bash",
+	lines := []string{
+		"#!/usr/bin/env bash",
 		"set -euxo",
-		"echo 'Hello World !'"}
+	}
 
 	s.addLines(lines)
 
 	// Make working dir
 	wdir := fmt.Sprintf("/%s/%s", "build", projectName)
-	s.printFLine("mkdir -p '%s'", wdir)
-	s.printFLine("cd '%s'", wdir)
-	s.printFLine("pwd")
+	s.addFline("mkdir -p '%s'", wdir)
+	s.addFline("cd '%s'", wdir)
+	s.addFline("pwd")
 }
 
 // Generate git clone code
@@ -96,22 +100,43 @@ func (s *ScriptContext) printGitCheckout() {
 }
 
 func (s *ScriptContext) printJobStep(step protocol.JobStep) {
-	s.printFLine("echo 'Step %s has %d commands'", step.Name, len(step.Script))
+	s.addFline("echo 'Step `%s` has %d commands'", step.Name, len(step.Script))
 	s.addLines(step.Script)
 }
 
-func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact) {
-	s.printFLine("TMPDIR=$(mktemp -d)")
+func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobId int, jobToken string) {
+	s.addFline("TMPDIR=$(mktemp -d)")
 
 	// ZIP command
 	inFiles := strings.Join(artifact.Paths, " ")
-	zipCommand := fmt.Sprintf("zip -p ${TMPDIR}/artifact.zip %s", inFiles)
-	s.printFLine(zipCommand)
 
+	zipFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
+	zipCommand := fmt.Sprintf("zip -p %s %s", zipFile, inFiles)
+	s.addFline(zipCommand)
+
+	// Upload
+	uploadLines := genUploadSnippet(artifact, jobId, jobToken, zipFile)
+	s.addLines(uploadLines)
+
+	// Cleanup
 	lines := []string{
-		"(cd ${TMPDIR} && ls -lah)",
+		fmt.Sprintf("(rm %s) || true", zipFile),
 		"unset TMPDIR",
 	}
-
 	s.addLines(lines)
+}
+
+func genUploadSnippet(artifact *protocol.JobArtifact, jobId int, jobToken string, localFilePath string) []string {
+	q := url.Values{}
+	if len(artifact.ExpireIn) > 0 {
+		q.Set("expire_in", artifact.ExpireIn)
+	}
+
+	// Upload command
+	postUrl := fmt.Sprintf("${CI_API_V4_URL}/jobs/%d/artifacts?%s", jobId, q.Encode())
+	curlCmd := fmt.Sprintf("curl -H \"JOB-TOKEN: %s\" -F \"file=@%s\" %s", jobToken, localFilePath, postUrl)
+
+	return []string{
+		curlCmd,
+	}
 }

@@ -37,6 +37,8 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	logState := newLogState(ctxLogger)
 
+	// Logger for gitlab trace
+	// Writes log messages directly to gitlab console
 	labLog := logrus.New()
 	labLog.SetLevel(logrus.DebugLevel)
 	labLog.SetFormatter(&logrus.TextFormatter{
@@ -60,12 +62,12 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		}
 	}()
 
-	defer func() {
+	logPush := func() {
 		err := pushLogsToGitlab(logState, &backChannel)
 		if err != nil {
 			ctxLogger.Warn("Failed to push logs to gitlab")
 		}
-	}()
+	}
 
 	backChannel.syncJobStatus(protocol.Pending)
 
@@ -107,22 +109,25 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 		switch {
 		case status.JobStatus.Failed > 0:
+			labLog.Error("Job Failed")
+			logPush()
 			backChannel.syncJobStatus(protocol.Failed)
 			return
 		case status.JobStatus.Succeeded > 0 && status.JobStatus.Active == 0:
+			labLog.Info("OK")
+			logPush()
 			backChannel.syncJobStatus(protocol.Success)
 			return
-		}
-
-		// Push logs buffer to gitlab
-		err = pushLogsToGitlab(logState, &backChannel)
-		if err != nil {
-			ctxLogger.Warn("Failed to push logs to gitlab")
+		default:
+			// Just push logs to gitlab
+			logPush()
 		}
 	}
 
 	// Out of loop means the runner is killed
-	backChannel.syncJobStatus(protocol.Failed)
+	defer backChannel.syncJobStatus(protocol.Failed)
+	labLog.Error("Runner was killed")
+	logPush()
 	ctxLogger.Debugf("EOF")
 }
 
