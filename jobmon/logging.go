@@ -55,7 +55,7 @@ func (ls *LogState) printLog(log io.ReadCloser) error {
 			// remember last line we seen
 			ls.lastSeenLine = parsed
 			//fmt.Println(timestamped)
-			fmt.Fprintln(ls.logBuffer, timestamped)
+			fmt.Fprintln(ls.logBuffer, parsed.text)
 		}
 	}
 

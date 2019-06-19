@@ -7,6 +7,7 @@ sample build:
   script:
     - echo "Hello World !"
     - go build -x
+    - ls -lah
   tags:
     - golang
   artifacts:
