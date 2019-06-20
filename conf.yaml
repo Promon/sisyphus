@@ -4,7 +4,7 @@ k8s_namespace: default
 gcp_cache_bucket: gitlab_ci_cache
 default_resource_request:
   - type: cpu
-    quantity: 1000m
+    quantity: 3600m
 
 ## Shield runner reg token
 #  {

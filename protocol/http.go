@@ -38,8 +38,36 @@ const (
 	Success JobState = "success"
 )
 
-type JsonBodyGetJob struct {
-	Token string `json:"token"`
+type FeaturesInfo struct {
+	Variables               bool `json:"variables"`
+	Image                   bool `json:"image"`
+	Services                bool `json:"services"`
+	Artifacts               bool `json:"artifacts"`
+	Cache                   bool `json:"cache"`
+	Shared                  bool `json:"shared"`
+	UploadMultipleArtifacts bool `json:"upload_multiple_artifacts"`
+	UploadRawArtifacts      bool `json:"upload_raw_artifacts"`
+	Session                 bool `json:"session"`
+	Terminal                bool `json:"terminal"`
+	Refspecs                bool `json:"refspecs"`
+	Masking                 bool `json:"masking"`
+	Proxy                   bool `json:"proxy"`
+}
+
+type VersionInfo struct {
+	Name         string       `json:"name,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	Revision     string       `json:"revision,omitempty"`
+	Platform     string       `json:"platform,omitempty"`
+	Architecture string       `json:"architecture,omitempty"`
+	Executor     string       `json:"executor,omitempty"`
+	Shell        string       `json:"shell,omitempty"`
+	Features     FeaturesInfo `json:"features"`
+}
+
+type JobRequest struct {
+	Info  VersionInfo `json:"info,omitempty"`
+	Token string      `json:"token"`
 }
 
 // Poll next job from the queue
@@ -49,7 +77,8 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 		return nil, err
 	}
 
-	req, err := jsonRequest(http.MethodPost, reqUrl, JsonBodyGetJob{Token: runnerToken})
+	jr := newJobRequest(runnerToken)
+	req, err := jsonRequest(http.MethodPost, reqUrl, jr)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +111,26 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 	}
 
 	return nil, errors.New(fmt.Sprintf("Unknown response code %v", resp.StatusCode))
+}
+
+func newJobRequest(runnerToken string) *JobRequest {
+	return &JobRequest{
+		Token: runnerToken,
+		Info: VersionInfo{
+			Features: FeaturesInfo{
+				Cache:                   true,
+				Variables:               true,
+				Artifacts:               true,
+				Image:                   true,
+				Refspecs:                true,
+				Shared:                  true,
+				UploadMultipleArtifacts: true,
+
+				// TODO: add support for services
+				Services: false,
+			},
+		},
+	}
 }
 
 // Generic JSON request

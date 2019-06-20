@@ -30,7 +30,21 @@ Content-Type: application/json
 POST https://git.dev.promon.no/api/v4/jobs/request
 Content-Type: application/json
 
-{"token": "kxZppSfxQjM6aAmAoxjo"}
+{
+  "token": "xYTmzTuMux7gfszyjfyh",
+  "info": {
+    "features": {
+      "variables": true,
+      "image": true,
+      "services": true,
+      "artifacts": true,
+      "cache": true,
+      "shared": true,
+      "upload_multiple_artifacts": true,
+      "refspecs": true
+    }
+  }
+}
 
 ###
 
@@ -61,4 +75,5 @@ Content-Type: application/json
   "token": "MEypaqwVxju9maGxnA3u",
   "state": "failed"
 }
+
 ###
