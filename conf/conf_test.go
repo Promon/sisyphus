@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -11,6 +12,10 @@ func Test_Conf(t *testing.T) {
 		GitlabUrl:      "https://www.gitlab.abc",
 		GcpCacheBucket: "test_bucket",
 		K8SNamespace:   "builder",
+
+		DefaultResourceRequest: []ResourceQuantity{
+			{Type: "cpu", Quantity: "1000m"},
+		},
 	}
 
 	r, err := writeConf(&orig)
@@ -18,12 +23,15 @@ func Test_Conf(t *testing.T) {
 		t.Error(err)
 	}
 
+	fmt.Println(string(r))
+
 	deser, err := ReadSisyphusConf(r)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if !reflect.DeepEqual(orig, *deser) {
+	y := *deser
+	if !reflect.DeepEqual(orig, y) {
 		t.Errorf("YAML parsing failed: got %v, want %v", deser, orig)
 	}
 }

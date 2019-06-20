@@ -5,6 +5,7 @@ import (
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"os"
 	"os/signal"
 	"sisyphus/conf"
@@ -15,11 +16,8 @@ import (
 	"time"
 )
 
-//const runnerToken = "kxZppSfxQjM6aAmAoxjo"
 const (
-	// Limit for monitoring requests
 	BurstLimit = 5
-	//CacheBucket = "gitlab_ci_cache"
 )
 
 func init() {
@@ -61,7 +59,18 @@ func main() {
 		log.Panic(err)
 	}
 
-	k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace)
+	// Parse request quantities
+	var defaultRequests v1.ResourceList
+	if len(sConf.DefaultResourceRequest) > 0 {
+		defaultRequests, err = conf.ParseResourceQuantity(sConf.DefaultResourceRequest)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		log.Debug("Default resource request: %v", defaultRequests)
+	}
+
+	k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace, defaultRequests)
 	if err != nil {
 		log.Panic(err)
 	}
