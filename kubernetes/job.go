@@ -131,7 +131,7 @@ func (j *Job) Delete() error {
 }
 
 // Create new job and start it
-func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, cacheBucket string) (*Job, error) {
+func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, cacheBucket string, resourceRequest v1.ResourceList) (*Job, error) {
 	// Create config map volume with entrypoint script
 	script := shell.GenerateScript(spec, cacheBucket)
 	entrypointTemplate := newEntryPointScript(namePrefix, script)
@@ -141,7 +141,7 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 		return nil, err
 	}
 
-	jobTemplate := jobFromGitHubSpec(namePrefix, spec, entrypoint.Name)
+	jobTemplate := jobFromGitHubSpec(namePrefix, spec, entrypoint.Name, resourceRequest)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ const (
 	ConfigMapAccessMode int32 = 0744
 )
 
-func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName string) *batchv1.Job {
+func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName string, resourceRequest v1.ResourceList) *batchv1.Job {
 	backOffLimit := int32(2)
 	accessMode := int32(ConfigMapAccessMode)
 
@@ -192,13 +192,12 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName
 
 					Containers: []v1.Container{
 						{
-							Name: ContainerNameBuilder,
-							// TODO : introduce script here
+							Name:    ContainerNameBuilder,
 							Command: []string{"/jobscripts/entrypoint.sh"},
-							//Args:    []string{"Hello World"},
 
-							//
-							Image: spec.Image.Name,
+							// Image
+							Image:           spec.Image.Name,
+							ImagePullPolicy: v1.PullAlways,
 
 							Env: convertEnvVars(spec.Variables),
 
@@ -208,6 +207,10 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName
 									MountPath: "/jobscripts",
 									ReadOnly:  true,
 								},
+							},
+
+							Resources: v1.ResourceRequirements{
+								Requests: resourceRequest,
 							},
 						},
 					},

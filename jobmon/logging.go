@@ -3,6 +3,7 @@ package jobmon
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -23,6 +24,8 @@ type LogState struct {
 	gitlabStartOffset int
 }
 
+const LogFetchTimeout = 10 * time.Second
+
 func (ls *LogState) bufferLogs(job *k.Job) error {
 	var sinceTime *time.Time = nil
 
@@ -30,13 +33,30 @@ func (ls *LogState) bufferLogs(job *k.Job) error {
 		sinceTime = &ls.lastSeenLine.timestamp
 	}
 
-	rdr, err := job.GetLog(sinceTime)
-	if err != nil {
-		return err
-	}
-	defer rdr.Close()
+	// Fetch logs with timeout
+	chRdr := make(chan io.ReadCloser, 1)
+	chErr := make(chan error, 1)
 
-	return ls.printLog(rdr)
+	go func() {
+		rdr, err := job.GetLog(sinceTime)
+		if err != nil {
+			chErr <- err
+			return
+		}
+		chRdr <- rdr
+	}()
+
+	select {
+	case rdr := <-chRdr:
+		defer rdr.Close()
+		return ls.printLog(rdr)
+
+	case err := <-chErr:
+		return err
+
+	case <-time.After(LogFetchTimeout):
+		return errors.New("fetching of logs from k8s timed out")
+	}
 }
 
 func (ls *LogState) printLog(log io.ReadCloser) error {

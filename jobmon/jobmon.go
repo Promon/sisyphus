@@ -33,7 +33,8 @@ func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol
 func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
 	ctxLogger := logrus.WithFields(
 		logrus.Fields{
-			"jobName": job.Name,
+			"k8sjob":    job.Name,
+			"gitlabjob": jobId,
 		})
 
 	logState := newLogState(ctxLogger)

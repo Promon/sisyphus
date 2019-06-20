@@ -19,7 +19,7 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	env := getVars(spec)
 	ctx := ScriptContext{}
 
-	ctx.printPrelude(spec.JobInfo.Name)
+	ctx.printPrelude(spec.JobInfo.ProjectName)
 
 	// GIT
 	if env["GIT_STRATEGY"] == "none" {
