@@ -92,7 +92,8 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Ticker used to rate limit requests
-	ticktock := time.NewTicker(500 * time.Millisecond)
+	ticktock := time.NewTicker(100 * time.Millisecond)
+	defer ticktock.Stop()
 
 	// Main event loop
 	for {
@@ -104,6 +105,8 @@ func main() {
 			}
 
 		case j := <-newJobs:
+			jinfo := j.JobInfo
+			log.Infof("New job received. proj=%s stage=%s name=%s", jinfo.ProjectName, jinfo.Stage, jinfo.Name)
 			go jobmon.RunJob(j, k8sSession, httpSession, sConf.GcpCacheBucket, workOk)
 
 		case s := <-signals:

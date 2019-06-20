@@ -8,6 +8,7 @@ import (
 	k "sisyphus/kubernetes"
 	"sisyphus/protocol"
 	"strings"
+	"time"
 )
 
 // Create job from descriptor and monitor loop
@@ -73,7 +74,13 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	backChannel.syncJobStatus(protocol.Pending)
 
+	// Rate limiter for this routine
+	tickLimiter := time.NewTicker(1 * time.Second)
+	defer tickLimiter.Stop()
+
 	for range workOk {
+		<-tickLimiter.C
+
 		status, err := job.GetK8SJobStatus()
 		if err != nil {
 			ctxLogger.Warn(err)
