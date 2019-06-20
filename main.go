@@ -1,9 +1,13 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"os/signal"
+	"sisyphus/conf"
 	"sisyphus/jobmon"
 	"sisyphus/kubernetes"
 	"sisyphus/protocol"
@@ -11,7 +15,15 @@ import (
 	"time"
 )
 
+//const runnerToken = "kxZppSfxQjM6aAmAoxjo"
+const (
+	// Limit for monitoring requests
+	BurstLimit = 5
+	//CacheBucket = "gitlab_ci_cache"
+)
+
 func init() {
+	// Initialize logger
 	log.SetLevel(log.DebugLevel)
 	log.SetFormatter(&log.TextFormatter{
 		ForceColors:   true,
@@ -20,22 +32,41 @@ func init() {
 	log.SetOutput(os.Stdout)
 }
 
-const runnerToken = "kxZppSfxQjM6aAmAoxjo"
-const (
-	// Limit for monitoring requests
-	BurstLimit  = 5
-	CacheBucket = "gitlab_ci_cache"
-)
+func readConf() (*conf.SisyphusConf, error) {
+	var confPath string
+	flag.StringVar(&confPath, "conf", "", "The `conf.yaml` file")
+	flag.Parse()
+
+	if len(confPath) == 0 {
+		return nil, errors.New("no configuration file provided. Use --conf")
+	}
+
+	rawConf, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		return nil, err
+	}
+
+	sConf, err := conf.ReadSisyphusConf(rawConf)
+	if err != nil {
+		return nil, err
+	}
+
+	return sConf, nil
+}
 
 func main() {
 	log.Info("Hello.")
-
-	k8sSession, err := kubernetes.CreateK8SSession("default")
+	sConf, err := readConf()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	httpSession, err := protocol.NewHttpSession("https://git.dev.promon.no")
+	k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	httpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -45,7 +76,7 @@ func main() {
 
 	// Queue for new jobs from gitlab
 	newJobs := make(chan *protocol.JobSpec, BurstLimit)
-	go nextJobLoop(httpSession, newJobs, workOk)
+	go nextJobLoop(httpSession, sConf.RunnerToken, newJobs, workOk)
 
 	// Handle OS signals
 	signals := make(chan os.Signal, 1)
@@ -64,7 +95,7 @@ func main() {
 			}
 
 		case j := <-newJobs:
-			go jobmon.RunJob(j, k8sSession, httpSession, CacheBucket, workOk)
+			go jobmon.RunJob(j, k8sSession, httpSession, sConf.GcpCacheBucket, workOk)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
@@ -79,7 +110,7 @@ func main() {
 	}
 }
 
-func nextJobLoop(httpSession *protocol.RunnerHttpSession, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
+func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
 	for range workOk {
 		nextJob, err := httpSession.PollNextJob(runnerToken)
 		if err != nil {

@@ -29,7 +29,7 @@ const (
 	CachePolicyUndefined CachePolicy = ""
 	CachePolicyPullPush  CachePolicy = "pull-push"
 	CachePolicyPull      CachePolicy = "pull"
-	CachePolicyPush      CachePolicy = "push"
+	//CachePolicyPush      CachePolicy = "push"
 )
 
 type JobCache struct {
