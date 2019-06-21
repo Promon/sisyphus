@@ -70,11 +70,6 @@ func main() {
 		log.Debug("Default resource request: %v", defaultRequests)
 	}
 
-	k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace, defaultRequests)
-	if err != nil {
-		log.Panic(err)
-	}
-
 	httpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)
 	if err != nil {
 		log.Panic(err)
@@ -107,7 +102,14 @@ func main() {
 		case j := <-newJobs:
 			jinfo := j.JobInfo
 			log.Infof("New job received. proj=%s stage=%s name=%s", jinfo.ProjectName, jinfo.Stage, jinfo.Name)
-			go jobmon.RunJob(j, k8sSession, httpSession, sConf.GcpCacheBucket, workOk)
+
+			k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace, defaultRequests)
+			if err != nil {
+				log.Error(err)
+			} else {
+				go jobmon.RunJob(j, k8sSession, httpSession, sConf.GcpCacheBucket, workOk)
+
+			}
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)

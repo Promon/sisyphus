@@ -40,12 +40,11 @@ func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
 }
 
 type K8SJobStatus struct {
-	JobStatus *batchv1.JobStatus
+	JobStatus batchv1.JobStatus
 
 	// Comprehensive pod status
-	Pods           []v1.Pod
-	PodPhases      map[string]v1.PodPhase
-	PodPhaseCounts map[v1.PodPhase]int
+	Pods      []v1.Pod
+	PodPhases map[string]v1.PodPhase
 }
 
 func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
@@ -73,23 +72,10 @@ func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
 		}
 	}
 
-	phaseCounts := map[v1.PodPhase]int{
-		v1.PodPending:   0,
-		v1.PodRunning:   0,
-		v1.PodSucceeded: 0,
-		v1.PodFailed:    0,
-		v1.PodUnknown:   0,
-	}
-
-	for _, phase := range phases {
-		phaseCounts[phase] = phaseCounts[phase] + 1
-	}
-
 	return &K8SJobStatus{
-		JobStatus:      &sj.Status,
-		Pods:           pods,
-		PodPhases:      phases,
-		PodPhaseCounts: phaseCounts,
+		JobStatus: sj.Status,
+		Pods:      pods,
+		PodPhases: phases,
 	}, nil
 }
 
@@ -175,7 +161,7 @@ const (
 )
 
 func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName string, resourceRequest v1.ResourceList) *batchv1.Job {
-	backOffLimit := int32(2)
+	backOffLimit := int32(1)
 	accessMode := int32(ConfigMapAccessMode)
 
 	theJob := &batchv1.Job{

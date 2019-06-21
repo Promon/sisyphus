@@ -89,9 +89,11 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 		js := status.JobStatus
 		ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
-		ctxLogger.Debugf("Pod Phases %v", status.PodPhases)
+		//ctxLogger.Debugf("Pod Phases %v", status.PodPhases)
 
-		if status.PodPhaseCounts[v1.PodPending] == 0 && status.PodPhaseCounts[v1.PodUnknown] == 0 {
+		// The pod must be not in pending or unknown state to have logs
+		builderPhase := status.PodPhases[k.ContainerNameBuilder]
+		if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
 			// Job canceled remotely
 			status := backChannel.syncJobStatus(protocol.Running)
 			if cancelRequested(status) {
@@ -105,7 +107,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				ctxLogger.Warn(err)
 				labLog.Warn(err)
 			}
-		} else {
+		} else if builderPhase == v1.PodPending {
 			gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
 			if cancelRequested(gitlabStatus) {
 				ctxLogger.Info("Job canceled")
@@ -137,7 +139,6 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	defer backChannel.syncJobStatus(protocol.Failed)
 	labLog.Error("Runner was killed")
 	logPush()
-	ctxLogger.Debugf("EOF")
 }
 
 func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error {
