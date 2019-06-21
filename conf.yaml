@@ -1,6 +1,6 @@
 gitlab_url: https://git.dev.promon.no
 runner_token: xYTmzTuMux7gfszyjfyh
-k8s_namespace: default
+k8s_namespace: sisyphus
 gcp_cache_bucket: gitlab_ci_cache
 default_resource_request:
   - type: cpu

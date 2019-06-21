@@ -22,9 +22,10 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	ctx.printPrelude(spec.JobInfo.ProjectName)
 
 	// GIT
-	if env["GIT_STRATEGY"] == "none" {
+	switch {
+	case env["GIT_STRATEGY"] == "none":
 		ctx.addFline("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
-	} else {
+	default:
 		ctx.printGitClone()
 		ctx.printGitCleanReset()
 		ctx.printGitCheckout()
@@ -89,22 +90,25 @@ func (s *ScriptContext) addLines(lines []string) {
 func (s *ScriptContext) printPrelude(projectName string) {
 	lines := []string{
 		"#!/usr/bin/env bash",
+		"# Prelude",
 		"set -euxo",
 	}
 
 	s.addLines(lines)
 
 	// Make working dir
-	wdir := fmt.Sprintf("/%s/%s", "build", projectName)
-	s.addFline("mkdir -p '%s'", wdir)
-	s.addFline("cd '%s'", wdir)
+	projectDir := fmt.Sprintf("/%s/%s", "build", projectName)
+	s.addFline("export CI_PROJECT_DIR=%s", projectDir)
+	s.addFline("mkdir -p '%s'", projectDir)
+	s.addFline("cd '%s'", projectDir)
 	s.addFline("pwd")
 }
 
 // Generate git clone code
 func (s *ScriptContext) printGitClone() {
 	lines := []string{
-		"echo 'Fetching git remotes'",
+		"# GIT Clone",
+		"echo 'Cloning git repo'",
 		"git clone ${CI_REPOSITORY_URL} ./",
 		"git config fetch.recurseSubmodules false",
 		"git fetch --prune",
@@ -115,6 +119,7 @@ func (s *ScriptContext) printGitClone() {
 
 func (s *ScriptContext) printGitCleanReset() {
 	lines := []string{
+		"# GIT cleanup",
 		"rm -f '.git/index.lock'",
 		"rm -f '.git/shallow.lock'",
 		"rm -f '.git/HEAD.lock'",
@@ -128,6 +133,7 @@ func (s *ScriptContext) printGitCleanReset() {
 
 func (s *ScriptContext) printGitCheckout() {
 	lines := []string{
+		"# Git checkout",
 		"echo \"Checking out ${CI_COMMIT_SHA}\"",
 		"git checkout -f -q ${CI_COMMIT_SHA}",
 	}
@@ -136,11 +142,13 @@ func (s *ScriptContext) printGitCheckout() {
 }
 
 func (s *ScriptContext) printJobStep(step protocol.JobStep) {
+	s.addFline("# STEP %s", step.Name)
 	s.addFline("echo 'Step `%s` has %d commands'", step.Name, len(step.Script))
 	s.addLines(step.Script)
 }
 
 func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobId int, jobToken string) {
+	s.addFline("# Upload artifact %s", artifact.Name)
 	s.addFline("TMPDIR=$(mktemp -d)")
 
 	// ZIP command
@@ -162,6 +170,7 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 }
 
 func (s *ScriptContext) printDownloadDependency(dep *protocol.JobDependency) {
+	s.addFline("# Download job dependency %s", dep.Name)
 	s.addFline("TMPDIR=$(mktemp -d)")
 
 	// Download
