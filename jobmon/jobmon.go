@@ -3,6 +3,7 @@ package jobmon
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
+	v12 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"net/http"
 	k "sisyphus/kubernetes"
@@ -119,12 +120,15 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		}
 
 		switch {
-		case status.JobStatus.Failed > 0:
+		case js.Failed > 0 ||
+			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
 			labLog.Error("Job Failed")
 			logPush()
 			backChannel.syncJobStatus(protocol.Failed)
 			return
-		case status.JobStatus.Succeeded > 0 && status.JobStatus.Active == 0:
+
+		case js.Succeeded > 0 && js.Active == 0 ||
+			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
 			labLog.Info("OK")
 			logPush()
 			backChannel.syncJobStatus(protocol.Success)
