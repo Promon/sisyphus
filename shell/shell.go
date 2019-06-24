@@ -22,13 +22,20 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	ctx.printPrelude(spec.JobInfo.ProjectName)
 
 	// GIT
-	switch {
-	case env["GIT_STRATEGY"] == "none":
+	if env["GIT_STRATEGY"] == "none" {
 		ctx.addFline("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
-	default:
-		ctx.printGitClone()
-		ctx.printGitCleanReset()
-		ctx.printGitCheckout()
+	} else {
+		_, hasCacheVar := env[EnvVarGitCache]
+		if hasCacheVar && len(env[EnvVarGitCache]) > 0 {
+			// use gitcache
+			ctx.printGitDownloadCache(env[EnvVarGitCache])
+		} else {
+			// fetch git in normal way
+			ctx.printGitClone()
+			ctx.printGitCleanReset()
+			ctx.printGitCheckout()
+			ctx.printGitSyncSubmodules()
+		}
 	}
 
 	// Download caches
@@ -117,6 +124,27 @@ func (s *ScriptContext) printGitClone() {
 	s.addLines(lines)
 }
 
+func (s *ScriptContext) printGitFetch() {
+	lines := []string{
+		"echo 'Fetching git remotes'",
+		"git remote set-url origin ${CI_REPOSITORY_URL}",
+		"git config fetch.recurseSubmodules false",
+		"git fetch --prune",
+	}
+
+	s.addLines(lines)
+}
+
+func (s *ScriptContext) printGitCheckout() {
+	lines := []string{
+		"# Git checkout",
+		"echo \"Checking out ${CI_COMMIT_SHA}\"",
+		"git checkout -f -q ${CI_COMMIT_SHA}",
+	}
+
+	s.addLines(lines)
+}
+
 func (s *ScriptContext) printGitCleanReset() {
 	lines := []string{
 		"# GIT cleanup",
@@ -131,14 +159,35 @@ func (s *ScriptContext) printGitCleanReset() {
 	s.addLines(lines)
 }
 
-func (s *ScriptContext) printGitCheckout() {
+func (s *ScriptContext) printGitSyncSubmodules() {
 	lines := []string{
-		"# Git checkout",
-		"echo \"Checking out ${CI_COMMIT_SHA}\"",
-		"git checkout -f -q ${CI_COMMIT_SHA}",
+		"echo 'Synchronizing submodules'",
+		"git submodule sync --recursive",
+		"git submodule foreach --recursive git clean -ffxd",
+		"git submodule foreach --recursive git reset --hard",
+		"git submodule update --init --recursive",
 	}
 
 	s.addLines(lines)
+}
+
+func (s *ScriptContext) printGitDownloadCache(cacheUrl string) {
+	s.addFline("# Fetching GIT cache from %s", cacheUrl)
+	s.addFline("gsutil cat %s | tar -zx", cacheUrl)
+
+	// Cached git has wrong token in submodule urls
+	s.addFline("# Fix CI tokens")
+	s.addFline(`new_token="s/gitlab-ci-token:[a-zA-Z0-9_-]\+/gitlab-ci-token:${CI_JOB_TOKEN}/g"
+sed -i -e ${new_token} '.git/config'
+
+for CNF in $(find ./.git/modules/ -type f -name 'config'); do
+	sed -i -e ${new_token} "${CNF}"
+done`)
+
+	s.printGitCleanReset()
+	s.printGitFetch()
+	s.printGitCheckout()
+	s.printGitSyncSubmodules()
 }
 
 func (s *ScriptContext) printJobStep(step protocol.JobStep) {
