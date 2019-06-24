@@ -66,8 +66,6 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-
-		log.Debug("Default resource request: %v", defaultRequests)
 	}
 
 	httpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)

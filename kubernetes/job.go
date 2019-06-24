@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	batchv1 "k8s.io/api/batch/v1"
@@ -80,7 +81,7 @@ func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
 }
 
 // Get logs stream
-func (j *Job) GetLog(sinceTime *time.Time) (io.ReadCloser, error) {
+func (j *Job) GetLog(sinceTime *time.Time) (*bytes.Buffer, error) {
 	controllerUid := j.k8sJobTemplate.GetUID()
 	pods, err := getPodsOfController(j.k8sClient, j.namespace, controllerUid)
 
@@ -91,6 +92,7 @@ func (j *Job) GetLog(sinceTime *time.Time) (io.ReadCloser, error) {
 	for _, pod := range pods {
 		for _, ctr := range pod.Spec.Containers {
 			if ctr.Name == ContainerNameBuilder {
+
 				logOpts := v1.PodLogOptions{
 					Container:  ctr.Name,
 					Timestamps: true,
@@ -99,9 +101,21 @@ func (j *Job) GetLog(sinceTime *time.Time) (io.ReadCloser, error) {
 				if sinceTime != nil {
 					logOpts.SinceTime = &metav1.Time{Time: *sinceTime}
 				}
+				resp := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(pod.GetName(), &logOpts)
+				respStream, err := resp.Stream()
+				if err != nil {
+					return nil, err
+				}
+				defer respStream.Close()
 
-				req := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(pod.GetName(), &logOpts)
-				return req.Stream()
+				// Copy to buffer
+				var buf bytes.Buffer
+				_, err = io.Copy(&buf, respStream)
+				if err != nil {
+					return nil, err
+				}
+
+				return &buf, nil
 			}
 		}
 	}
