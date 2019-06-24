@@ -13,10 +13,22 @@ import (
 )
 
 // Create job from descriptor and monitor loop
-func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, resourceRequest v1.ResourceList, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
+func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJobParameters, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
 	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
 
-	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec, resourceRequest, cacheBucket)
+	rrq, err := protocol.ToFlatJson(k8sJobParams)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	logrus.WithFields(map[string]interface{}{
+		"project": spec.JobInfo.ProjectName,
+		"job":     spec.JobInfo.Name,
+		"jobId":   spec.Id,
+	}).Infof("Starting new job with parameters %s", rrq)
+
+	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec, k8sJobParams, cacheBucket)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to create K8S job for project=%v, job=%v, job_id=%v",
 			spec.JobInfo.ProjectName,
@@ -102,6 +114,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			}
 
 			// Fetch logs from K8S
+			//noinspection GoShadowedVar
 			err := logState.bufferLogs(job)
 			if err != nil {
 				ctxLogger.Warn(err)
@@ -140,7 +153,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	// Out of loop means the runner is killed
 	defer backChannel.syncJobStatus(protocol.Failed)
-	labLog.Error("Runner was killed")
+	labLog.Error("The runner was killed")
 	logPush()
 }
 

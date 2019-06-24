@@ -30,6 +30,12 @@ type Job struct {
 	Name      string
 }
 
+// Additional parameters for K8S job spec
+type K8SJobParameters struct {
+	ResourceRequest   v1.ResourceList `json:"resource_request"`
+	ActiveDeadlineSec int64           `json:"active_deadline_sec"`
+}
+
 // Get job status
 func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
 	sj, err := j.k8sClient.BatchV1().Jobs(j.namespace).Get(j.Name, metav1.GetOptions{})
@@ -102,10 +108,12 @@ func (j *Job) GetLog(sinceTime *time.Time) (*bytes.Buffer, error) {
 					logOpts.SinceTime = &metav1.Time{Time: *sinceTime}
 				}
 				resp := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(pod.GetName(), &logOpts)
+				//noinspection GoShadowedVar
 				respStream, err := resp.Stream()
 				if err != nil {
 					return nil, err
 				}
+				//noinspection GoUnhandledErrorResult,GoDeferInLoop
 				defer respStream.Close()
 
 				// Copy to buffer
@@ -126,12 +134,13 @@ func (j *Job) GetLog(sinceTime *time.Time) (*bytes.Buffer, error) {
 // Delete job
 func (j *Job) Delete() error {
 	prop := metav1.DeletePropagationBackground
+	//noinspection GoUnhandledErrorResult
 	defer j.k8sClient.CoreV1().ConfigMaps(j.namespace).Delete(j.k8sEntrypointMap.Name, &metav1.DeleteOptions{PropagationPolicy: &prop})
 	return j.k8sClient.BatchV1().Jobs(j.namespace).Delete(j.Name, &metav1.DeleteOptions{PropagationPolicy: &prop})
 }
 
 // Create new job and start it
-func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, cacheBucket string, resourceRequest v1.ResourceList) (*Job, error) {
+func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, k8sJobParams *K8SJobParameters, cacheBucket string) (*Job, error) {
 	// Create config map volume with entrypoint script
 	script := shell.GenerateScript(spec, cacheBucket)
 	entrypointTemplate := newEntryPointScript(namePrefix, script)
@@ -141,7 +150,7 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 		return nil, err
 	}
 
-	jobTemplate := jobFromGitHubSpec(namePrefix, spec, entrypoint.Name, resourceRequest)
+	jobTemplate := jobFromGitHubSpec(namePrefix, spec, k8sJobParams, entrypoint.Name)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
@@ -174,7 +183,7 @@ const (
 	ConfigMapAccessMode int32 = 0744
 )
 
-func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName string, resourceRequest v1.ResourceList) *batchv1.Job {
+func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, k8sParams *K8SJobParameters, entryPointName string) *batchv1.Job {
 	backOffLimit := int32(1)
 	accessMode := int32(ConfigMapAccessMode)
 
@@ -188,8 +197,8 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName
 
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
-					RestartPolicy: v1.RestartPolicyOnFailure,
-
+					RestartPolicy:         v1.RestartPolicyOnFailure,
+					ActiveDeadlineSeconds: &k8sParams.ActiveDeadlineSec,
 					Containers: []v1.Container{
 						{
 							Name:    ContainerNameBuilder,
@@ -210,7 +219,7 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, entryPointName
 							},
 
 							Resources: v1.ResourceRequirements{
-								Requests: resourceRequest,
+								Requests: k8sParams.ResourceRequest,
 							},
 						},
 					},

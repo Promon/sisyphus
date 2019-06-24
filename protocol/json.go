@@ -102,3 +102,12 @@ func GetEnvVars(spec *JobSpec) map[string]string {
 
 	return r
 }
+
+func ToFlatJson(v interface{}) (string, error) {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}

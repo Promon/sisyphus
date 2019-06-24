@@ -14,12 +14,14 @@ import (
 	"sisyphus/kubernetes"
 	"sisyphus/protocol"
 	"sisyphus/shell"
+	"strconv"
 	"syscall"
 	"time"
 )
 
 const (
-	BurstLimit = 5
+	BurstLimit                   = 5
+	DefaultActiveDeadlineSeconds = 3600
 )
 
 func init() {
@@ -103,23 +105,28 @@ func main() {
 			ji := j.JobInfo
 			log.Infof("New job received. proj=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
 
-			k8sSession, erra := kubernetes.CreateK8SSession(sConf.K8SNamespace)
-			if erra != nil {
-				log.Error(erra)
+			vars := protocol.GetEnvVars(j)
+			//noinspection GoShadowedVar
+			resReq, err := parseCustomK8SJobParams(vars)
+
+			// Parse custom job parameters passed via env variables
+			if err != nil {
+				log.Error(err)
 			} else {
-				vars := protocol.GetEnvVars(j)
-				resReq, errb := getCustomResourceRequests(vars)
-
-				if err != nil {
-					log.Error(errb)
-				} else {
-					var resRequest = defaultRequests
-					if resReq != nil {
-						resRequest = *resReq
-					}
-
-					go jobmon.RunJob(j, k8sSession, resRequest, httpSession, sConf.GcpCacheBucket, workOk)
+				if resReq.ResourceRequest == nil {
+					resReq.ResourceRequest = defaultRequests
 				}
+
+				if resReq.ActiveDeadlineSec == 0 {
+					resReq.ActiveDeadlineSec = DefaultActiveDeadlineSeconds
+				}
+
+				//noinspection GoShadowedVar
+				k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace)
+				if err != nil {
+					log.Error(err)
+				}
+				go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, workOk)
 			}
 
 		case s := <-signals:
@@ -135,19 +142,45 @@ func main() {
 	}
 }
 
-func getCustomResourceRequests(envVars map[string]string) (*v1.ResourceList, error) {
-	jsv, ok := envVars[shell.SfsResourceRequest]
+//
+func parseCustomK8SJobParams(envVars map[string]string) (*kubernetes.K8SJobParameters, error) {
+	reqVal, ok := envVars[shell.SfsResourceRequest]
+
+	var params = kubernetes.K8SJobParameters{}
 	if ok {
-		var resourceQuant []conf.ResourceQuantity
-		err := json.Unmarshal([]byte(jsv), &resourceQuant)
+		req, err := parseCustomResourceRequests(reqVal)
 		if err != nil {
 			return nil, err
 		}
-		result, err := conf.ParseResourceQuantity(resourceQuant)
-		return &result, err
-	} else {
-		return nil, nil
+
+		params.ResourceRequest = *req
 	}
+
+	dVal, ok := envVars[shell.SfsActiveDeadline]
+	if ok {
+		dLine, err := parseActiveDeadlineSec(dVal)
+		if err != nil {
+			return nil, err
+		}
+
+		params.ActiveDeadlineSec = dLine
+	}
+
+	return &params, nil
+}
+
+func parseActiveDeadlineSec(envVal string) (int64, error) {
+	return strconv.ParseInt(envVal, 10, 64)
+}
+
+func parseCustomResourceRequests(envVal string) (*v1.ResourceList, error) {
+	resourceLst := make(v1.ResourceList)
+	err := json.Unmarshal([]byte(envVal), &resourceLst)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resourceLst, err
 }
 
 func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {

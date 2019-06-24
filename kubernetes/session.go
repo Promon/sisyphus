@@ -1,7 +1,6 @@
 package kubernetes
 
 import (
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
@@ -42,8 +41,8 @@ func CreateK8SSession(namespace string) (*Session, error) {
 }
 
 // Create new job template
-func (s *Session) CreateGitLabJob(namePrefix string, spec *protocol.JobSpec, resourceRequest v1.ResourceList, cacheBucket string) (*Job, error) {
-	job, err := newJobFromGitLab(s, namePrefix, spec, cacheBucket, resourceRequest)
+func (s *Session) CreateGitLabJob(namePrefix string, spec *protocol.JobSpec, k8sJobParams *K8SJobParameters, cacheBucket string) (*Job, error) {
+	job, err := newJobFromGitLab(s, namePrefix, spec, k8sJobParams, cacheBucket)
 	if err != nil {
 		return nil, err
 	}

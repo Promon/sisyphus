@@ -1,8 +1,10 @@
 package protocol
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 )
 
@@ -29,4 +31,13 @@ func Test_parse_X(t *testing.T) {
 	}
 
 	fmt.Println(spec)
+}
+
+func Test_resource(t *testing.T) {
+	ex := `{"cpu":"100m"}`
+	q := make(v1.ResourceList)
+	err := json.Unmarshal([]byte(ex), &q)
+	if err != nil {
+		t.Error(err)
+	}
 }
