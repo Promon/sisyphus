@@ -203,7 +203,7 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 	// ZIP command
 	inFiles := strings.Join(artifact.Paths, " ")
 	zipFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
-	zipCommand := fmt.Sprintf("zip -p %s %s", zipFile, inFiles)
+	zipCommand := fmt.Sprintf("zip -p -r %s %s", zipFile, inFiles)
 	s.addFline(zipCommand)
 
 	// Upload

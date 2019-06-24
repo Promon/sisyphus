@@ -90,7 +90,6 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 		js := status.JobStatus
 		ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
-		//ctxLogger.Debugf("Pod Phases %v", status.PodPhases)
 
 		// The pod must be not in pending or unknown state to have logs
 		builderPhase := status.PodPhases[k.ContainerNameBuilder]
