@@ -249,20 +249,6 @@ func NewHttpSession(baseUrl string) (*RunnerHttpSession, error) {
 	}, nil
 }
 
-func debugRequest(req *http.Request) {
-	if log.GetLevel() < log.DebugLevel {
-		return
-	}
-
-	b, err := httputil.DumpRequestOut(req, true)
-
-	if err != nil {
-		log.Warn(err)
-	}
-
-	log.Debugf("---REQUEST---\n%v\n---EOF REQUEST---", string(b))
-}
-
 func debugResponse(resp *http.Response) {
 	if log.GetLevel() < log.DebugLevel {
 		return

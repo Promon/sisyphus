@@ -13,10 +13,10 @@ import (
 )
 
 // Create job from descriptor and monitor loop
-func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
+func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, resourceRequest v1.ResourceList, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
 	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
 
-	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec, cacheBucket)
+	job, err := k8sSession.CreateGitLabJob(jobPrefix, spec, resourceRequest, cacheBucket)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to create K8S job for project=%v, job=%v, job_id=%v",
 			spec.JobInfo.ProjectName,
@@ -95,8 +95,8 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		builderPhase := status.PodPhases[k.ContainerNameBuilder]
 		if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
 			// Job canceled remotely
-			status := backChannel.syncJobStatus(protocol.Running)
-			if cancelRequested(status) {
+			gitlabStatus := backChannel.syncJobStatus(protocol.Running)
+			if cancelRequested(gitlabStatus) {
 				ctxLogger.Info("Job canceled")
 				return
 			}

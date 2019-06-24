@@ -7,8 +7,8 @@ import (
 )
 
 type ResourceQuantity struct {
-	Type     v1.ResourceName `yaml:"type"`
-	Quantity string          `yaml:"quantity"`
+	Type     v1.ResourceName `yaml:"type",json:"type"`
+	Quantity string          `yaml:"quantity",json:"quantity"`
 }
 
 type SisyphusConf struct {

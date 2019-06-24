@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ import (
 	"sisyphus/jobmon"
 	"sisyphus/kubernetes"
 	"sisyphus/protocol"
+	"sisyphus/shell"
 	"syscall"
 	"time"
 )
@@ -98,15 +100,26 @@ func main() {
 			}
 
 		case j := <-newJobs:
-			jinfo := j.JobInfo
-			log.Infof("New job received. proj=%s stage=%s name=%s", jinfo.ProjectName, jinfo.Stage, jinfo.Name)
+			ji := j.JobInfo
+			log.Infof("New job received. proj=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
 
-			k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace, defaultRequests)
-			if err != nil {
-				log.Error(err)
+			k8sSession, erra := kubernetes.CreateK8SSession(sConf.K8SNamespace)
+			if erra != nil {
+				log.Error(erra)
 			} else {
-				go jobmon.RunJob(j, k8sSession, httpSession, sConf.GcpCacheBucket, workOk)
+				vars := protocol.GetEnvVars(j)
+				resReq, errb := getCustomResourceRequests(vars)
 
+				if err != nil {
+					log.Error(errb)
+				} else {
+					var resRequest = defaultRequests
+					if resReq != nil {
+						resRequest = *resReq
+					}
+
+					go jobmon.RunJob(j, k8sSession, resRequest, httpSession, sConf.GcpCacheBucket, workOk)
+				}
 			}
 
 		case s := <-signals:
@@ -119,6 +132,21 @@ func main() {
 			log.Trace("No activity")
 			time.Sleep(1 * time.Second)
 		}
+	}
+}
+
+func getCustomResourceRequests(envVars map[string]string) (*v1.ResourceList, error) {
+	jsv, ok := envVars[shell.SfsResourceRequest]
+	if ok {
+		var resourceQuant []conf.ResourceQuantity
+		err := json.Unmarshal([]byte(jsv), &resourceQuant)
+		if err != nil {
+			return nil, err
+		}
+		result, err := conf.ParseResourceQuantity(resourceQuant)
+		return &result, err
+	} else {
+		return nil, nil
 	}
 }
 

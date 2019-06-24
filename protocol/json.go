@@ -92,3 +92,13 @@ func ParseJobSpec(jsonData []byte) (*JobSpec, error) {
 
 	return &spec, nil
 }
+
+func GetEnvVars(spec *JobSpec) map[string]string {
+	r := make(map[string]string)
+
+	for _, v := range spec.Variables {
+		r[v.Key] = v.Value
+	}
+
+	return r
+}

@@ -16,7 +16,7 @@ type ScriptContext struct {
 
 // Generate job script
 func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
-	env := getVars(spec)
+	env := protocol.GetEnvVars(spec)
 	ctx := ScriptContext{}
 
 	ctx.printPrelude(spec.JobInfo.ProjectName)
@@ -25,10 +25,10 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	if env["GIT_STRATEGY"] == "none" {
 		ctx.addFline("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
 	} else {
-		_, hasCacheVar := env[EnvVarGitCache]
-		if hasCacheVar && len(env[EnvVarGitCache]) > 0 {
+		_, hasCacheVar := env[SfsEnvVarGitCache]
+		if hasCacheVar && len(env[SfsEnvVarGitCache]) > 0 {
 			// use gitcache
-			ctx.printGitDownloadCache(env[EnvVarGitCache])
+			ctx.printGitDownloadCache(env[SfsEnvVarGitCache])
 		} else {
 			// fetch git in normal way
 			ctx.printGitClone()
@@ -71,16 +71,6 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 	}
 
 	return ctx.builder.String()
-}
-
-func getVars(spec *protocol.JobSpec) map[string]string {
-	r := make(map[string]string)
-
-	for _, v := range spec.Variables {
-		r[v.Key] = v.Value
-	}
-
-	return r
 }
 
 func (s *ScriptContext) addFline(format string, a ...interface{}) {
