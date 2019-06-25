@@ -23,7 +23,10 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: Always
+          command: ["sisyphus"]
+          args: ["--conf", "/etc/sisyphus/conf.yaml", "--in-cluster"]
+
           volumeMounts:
             - mountPath: /etc/sisyphus
               name: config

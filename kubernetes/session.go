@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
@@ -19,14 +20,25 @@ type Session struct {
 }
 
 // Start new kubernetes session with configuration from home directory
-func CreateK8SSession(namespace string) (*Session, error) {
-	home := homeDir()
-	kubeconfig := filepath.Join(home, ".kube", "config")
+func CreateK8SSession(inCluster bool, namespace string) (*Session, error) {
 
-	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return nil, err
+	var config *rest.Config
+	if inCluster {
+		x, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+		config = x
+	} else {
+		home := homeDir()
+		kubeconfig := filepath.Join(home, ".kube", "config")
+
+		// use the current context in kubeconfig
+		x, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			return nil, err
+		}
+		config = x
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)

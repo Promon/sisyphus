@@ -31,12 +31,14 @@ func init() {
 		ForceColors:   true,
 		FullTimestamp: true,
 	})
+
 	log.SetOutput(os.Stdout)
 }
 
-func readConf() (*conf.SisyphusConf, error) {
+func readConf(inClusterOpt *bool) (*conf.SisyphusConf, error) {
 	var confPath string
 	flag.StringVar(&confPath, "conf", "", "The `conf.yaml` file")
+	flag.BoolVar(inClusterOpt, "in-cluster", false, "Use in-cluster config, when running inside cluster")
 	flag.Parse()
 
 	if len(confPath) == 0 {
@@ -58,10 +60,12 @@ func readConf() (*conf.SisyphusConf, error) {
 
 func main() {
 	log.Info("Hello.")
-	sConf, err := readConf()
+	var inCluster = false
+	sConf, err := readConf(&inCluster)
 	if err != nil {
 		log.Panic(err)
 	}
+	log.Infof("In Cluster config: %v", inCluster)
 
 	// Parse request quantities
 	var defaultRequests v1.ResourceList
@@ -122,7 +126,7 @@ func main() {
 				}
 
 				//noinspection GoShadowedVar
-				k8sSession, err := kubernetes.CreateK8SSession(sConf.K8SNamespace)
+				k8sSession, err := kubernetes.CreateK8SSession(inCluster, sConf.K8SNamespace)
 				if err != nil {
 					log.Error(err)
 				}
