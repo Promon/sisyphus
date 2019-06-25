@@ -5,7 +5,12 @@ build:
     gitCommit:
       variant: AbbrevCommitSha
   artifacts:
-    - image: gcr.io/k8s-skaffold/sisyphus-runner
-      context: ./dockerfiles/builder
+    - image: gcr.io/k8s-skaffold/sisyphus-build-env
       docker:
         dockerfile: Dockerfile
+        target: build-env
+
+    - image: gcr.io/k8s-skaffold/sisyphus-runner
+      docker:
+        dockerfile: Dockerfile
+        target: runner

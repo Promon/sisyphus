@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sisyphus.fullname" . }}
+  labels:
+{{ include "sisyphus.labels" . | indent 4 }}
+data:
+  conf.yaml: |
+    gitlab_url: https://git.dev.promon.no
+    runner_token: xYTmzTuMux7gfszyjfyh
+    k8s_namespace: sisyphus
+    gcp_cache_bucket: gitlab_ci_cache
+    default_resource_request:
+      - type: cpu
+        quantity: 3600m

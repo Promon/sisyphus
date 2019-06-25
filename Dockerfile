@@ -45,7 +45,6 @@ RUN set -x \
     && go mod tidy \
     && go build -v -buildmode=exe .
 
-
 #
 # Runner
 #
