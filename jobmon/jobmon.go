@@ -100,7 +100,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			labLog.Warn(err)
 		}
 
-		js := status.JobStatus
+		js := status.Job.Status
 		ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
 
 		// The pod must be not in pending or unknown state to have logs
@@ -126,7 +126,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				ctxLogger.Info("Job canceled")
 				return
 			} else {
-				podInfo := podInfoMessage(status.Pods)
+				podInfo := podsInfoMessage(status.Pods)
 				labLog.Infof("PENDING %s", podInfo)
 			}
 		}
@@ -134,14 +134,14 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		switch {
 		case js.Failed > 0 ||
 			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
-			labLog.Error("Job Failed")
+			labLog.Errorf("Job Failed %s", podsInfoMessage(status.Pods))
 			logPush()
 			backChannel.syncJobStatus(protocol.Failed)
 			return
 
 		case js.Succeeded > 0 && js.Active == 0 ||
 			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
-			labLog.Info("OK")
+			labLog.Infof("OK %s", podsInfoMessage(status.Pods))
 			logPush()
 			backChannel.syncJobStatus(protocol.Success)
 			return
@@ -184,20 +184,20 @@ func cancelRequested(state *protocol.RemoteJobState) bool {
 	}
 }
 
-func podInfoMessage(pods []v1.Pod) string {
-	perpod := make([]string, len(pods))
+func podsInfoMessage(pods []v1.Pod) string {
+	perpod := make([]string, 0, len(pods))
 
-	for i, pod := range pods {
-		var podState string
-		if len(pod.Status.Conditions) == 0 {
-			podState = "Unknown"
-		} else {
-			podState = string(pod.Status.Conditions[0].Type)
-		}
-
-		line := fmt.Sprintf("[%s: %s]", pod.Name, podState)
-		perpod[i] = line
+	for _, pod := range pods {
+		//if pod.Status.Phase != nil {
+		msg := podStatusMessage(pod)
+		perpod = append(perpod, msg)
+		//}
 	}
 
 	return strings.Join(perpod, ", ")
+}
+
+func podStatusMessage(pod v1.Pod) string {
+	status := pod.Status
+	return fmt.Sprintf("[pod='%s' phase='%s' reason='%s' msg='%s']", pod.Name, status.Phase, status.Reason, status.Message)
 }

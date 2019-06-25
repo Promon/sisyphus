@@ -47,7 +47,7 @@ func (j *Job) GetStatus() (*batchv1.JobStatus, error) {
 }
 
 type K8SJobStatus struct {
-	JobStatus batchv1.JobStatus
+	Job *batchv1.Job
 
 	// Comprehensive pod status
 	Pods      []v1.Pod
@@ -80,7 +80,7 @@ func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
 	}
 
 	return &K8SJobStatus{
-		JobStatus: sj.Status,
+		Job:       sj,
 		Pods:      pods,
 		PodPhases: phases,
 	}, nil
