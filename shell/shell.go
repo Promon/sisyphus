@@ -94,7 +94,7 @@ func (s *ScriptContext) printPrelude(projectName string) {
 	s.addLines(lines)
 
 	// Make working dir
-	projectDir := fmt.Sprintf("/%s/%s", "build", projectName)
+	projectDir := "/build"
 	s.addFline("export CI_PROJECT_DIR=%s", projectDir)
 	s.addFline("mkdir -p '%s'", projectDir)
 	s.addFline("cd '%s'", projectDir)

@@ -88,6 +88,7 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 		debugResponse(resp)
 		return nil, err
 	}
+	//noinspection GoUnhandledErrorResult
 	defer resp.Body.Close()
 
 	// No new jobs
@@ -97,6 +98,7 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 
 	// Gitlab answers with 201 Created for new jobs
 	if resp.StatusCode == http.StatusCreated {
+		//noinspection GoShadowedVar
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
@@ -186,6 +188,7 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 	if err != nil {
 		return nil, err
 	}
+	//noinspection GoUnhandledErrorResult
 	defer resp.Body.Close()
 
 	rstate := RemoteJobState{
