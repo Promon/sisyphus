@@ -14,3 +14,26 @@ build:
       docker:
         dockerfile: Dockerfile
         target: runner
+deploy:
+  helm:
+    releases:
+      - name: sisyphus-dev-runner
+        chartPath: files/charts/sisyphus
+        values:
+          image: gcr.io/k8s-skaffold/sisyphus-runner
+
+        recreatePods: true
+
+profiles:
+  - name: production
+    deploy:
+      helm:
+        releases:
+          - name: sisyphus-runner
+            chartPath: files/charts/sisyphus
+            values:
+              image: gcr.io/k8s-skaffold/sisyphus-runner
+            recreatePods: true
+            overrides:
+              runnerConf:
+                runnerToken: tZbC3Lq5kLfzdGXhLUBj

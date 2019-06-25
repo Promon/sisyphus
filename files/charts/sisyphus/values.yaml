@@ -4,11 +4,14 @@
 
 replicaCount: 1
 
-image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:2aae5c9-dirty
+image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:f7c9330
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+runnerConf:
+  runnerToken: xYTmzTuMux7gfszyjfyh
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

@@ -14,10 +14,9 @@ Content-Type: application/json
 {
   "token": "xwBZ3KgHmKR8yYD3QA9U",
   "tag_list": [
-    "potato",
     "sisyphus"
   ],
-  "description": "New runner"
+  "description": "K8S runner"
 }
 
 ###
