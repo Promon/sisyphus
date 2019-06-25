@@ -1,4 +1,7 @@
-FROM golang:latest
+#
+# Build environment
+#
+FROM golang:1.12 AS build-env
 
 # Install required dependencies
 RUN set -x \
@@ -22,5 +25,37 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     && apt-get update -y \
     && apt-get install google-cloud-sdk -y
 
+COPY files/promon.crt /usr/local/share/ca-certificates/promon.crt
+RUN update-ca-certificates
+
+# Cache required go modules
+WORKDIR /build
+COPY ./go.mod ./go.sum ./
+RUN set -x \
+    && go mod download \
+    && rm -rf /build
+
+#
+# Builder
+#
+FROM build-env AS builder
+WORKDIR /build
+COPY . .
+RUN set -x \
+    && go mod tidy \
+    && go build -v -buildmode=exe .
+
+
+#
+# Runner
+#
+FROM ubuntu:bionic AS runner
+
+RUN set -x \
+    && apt-get update -y \
+    && apt-get install -y ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/sisyphus /bin/
 COPY files/promon.crt /usr/local/share/ca-certificates/promon.crt
 RUN update-ca-certificates
