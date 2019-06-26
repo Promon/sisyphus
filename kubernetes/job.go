@@ -22,6 +22,9 @@ type Job struct {
 	// Configmap with entrypoint script(s)
 	k8sEntrypointMap *v1.ConfigMap
 
+	// PVC for /build dir
+	k8sPvc *v1.PersistentVolumeClaim
+
 	// for faster access these values are copied from session
 	k8sClient *kubernetes.Clientset
 	namespace string
