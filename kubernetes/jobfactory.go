@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"errors"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,17 +22,18 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 	}
 
 	// Create PVC
-	q, err := resource.ParseQuantity("5Gi")
-	if err != nil {
-		return nil, err
-	}
-	pvcTemplate := newPvc(namePrefix, q)
+	pvcTemplate := newPvc(namePrefix, k8sJobParams.ResourceRequest[v1.ResourceStorage])
 	pvc, err := session.k8sClient.CoreV1().PersistentVolumeClaims(session.Namespace).Create(pvcTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	jobTemplate := jobFromGitHubSpec(namePrefix, spec, k8sJobParams, entrypoint.Name, pvc.Name)
+	// Create Job
+	qCpu, ok := k8sJobParams.ResourceRequest[v1.ResourceCPU]
+	if !ok {
+		return nil, errors.New("unknown quantity of cpu request")
+	}
+	jobTemplate := jobFromGitHubSpec(namePrefix, spec, k8sJobParams.ActiveDeadlineSec, qCpu, entrypoint.Name, pvc.Name)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
@@ -145,7 +147,13 @@ func newPvc(nameTemplate string, volumeSize resource.Quantity) *v1.PersistentVol
 }
 
 // Create K8S job from github spec
-func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, k8sParams *K8SJobParameters, entryPointName string, pvcName string) *v13.Job {
+func jobFromGitHubSpec(namePrefix string,
+	spec *protocol.JobSpec,
+	activeDeadlineSec int64,
+	cpuRequest resource.Quantity,
+	entryPointName string,
+	pvcName string) *v13.Job {
+
 	backOffLimit := int32(1)
 	accessMode := int32(ConfigMapAccessMode)
 
@@ -160,7 +168,8 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, k8sParams *K8S
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					RestartPolicy:         v1.RestartPolicyOnFailure,
-					ActiveDeadlineSeconds: &k8sParams.ActiveDeadlineSec,
+					ActiveDeadlineSeconds: &activeDeadlineSec,
+
 					Containers: []v1.Container{
 						{
 							Name:    ContainerNameBuilder,
@@ -185,7 +194,9 @@ func jobFromGitHubSpec(namePrefix string, spec *protocol.JobSpec, k8sParams *K8S
 							},
 
 							Resources: v1.ResourceRequirements{
-								Requests: k8sParams.ResourceRequest,
+								Requests: v1.ResourceList{
+									v1.ResourceCPU: cpuRequest,
+								},
 							},
 						},
 					},

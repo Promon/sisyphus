@@ -113,29 +113,21 @@ func main() {
 			ji := j.JobInfo
 			log.Infof("New job received. proj=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
 
+			// Parse custom job parameters passed via env variables
 			vars := protocol.GetEnvVars(j)
 			//noinspection GoShadowedVar
-			resReq, err := parseCustomK8SJobParams(vars)
-
-			// Parse custom job parameters passed via env variables
+			resReq, err := createK8SJobConf(vars, defaultRequests)
 			if err != nil {
 				log.Error(err)
-			} else {
-				if resReq.ResourceRequest == nil {
-					resReq.ResourceRequest = defaultRequests
-				}
-
-				if resReq.ActiveDeadlineSec == 0 {
-					resReq.ActiveDeadlineSec = DefaultActiveDeadlineSeconds
-				}
-
-				//noinspection GoShadowedVar
-				k8sSession, err := kubernetes.CreateK8SSession(inCluster, sConf.K8SNamespace)
-				if err != nil {
-					log.Error(err)
-				}
-				go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, workOk)
+				continue
 			}
+
+			//noinspection GoShadowedVar
+			k8sSession, err := kubernetes.CreateK8SSession(inCluster, sConf.K8SNamespace)
+			if err != nil {
+				log.Error(err)
+			}
+			go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, workOk)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
@@ -150,8 +142,27 @@ func main() {
 	}
 }
 
+func createK8SJobConf(envVars map[string]string, defaultRequests v1.ResourceList) (*kubernetes.K8SJobParameters, error) {
+	//noinspection GoShadowedVar
+	resReq, err := parseCustomK8SJobParams(envVars, defaultRequests)
+
+	if err != nil {
+		return nil, err
+	} else {
+		if resReq.ResourceRequest == nil {
+			resReq.ResourceRequest = defaultRequests
+		}
+
+		if resReq.ActiveDeadlineSec <= 0 {
+			resReq.ActiveDeadlineSec = DefaultActiveDeadlineSeconds
+		}
+	}
+
+	return resReq, nil
+}
+
 //
-func parseCustomK8SJobParams(envVars map[string]string) (*kubernetes.K8SJobParameters, error) {
+func parseCustomK8SJobParams(envVars map[string]string, defaultResourceRequest v1.ResourceList) (*kubernetes.K8SJobParameters, error) {
 	reqVal, ok := envVars[shell.SfsResourceRequest]
 
 	var params = kubernetes.K8SJobParameters{}
@@ -161,7 +172,14 @@ func parseCustomK8SJobParams(envVars map[string]string) (*kubernetes.K8SJobParam
 			return nil, err
 		}
 
-		params.ResourceRequest = *req
+		// Override with defaults
+		for k, dv := range defaultResourceRequest {
+			if _, ok = req[k]; !ok {
+				req[k] = dv
+			}
+		}
+
+		params.ResourceRequest = req
 	}
 
 	dVal, ok := envVars[shell.SfsActiveDeadline]
@@ -181,14 +199,14 @@ func parseActiveDeadlineSec(envVal string) (int64, error) {
 	return strconv.ParseInt(envVal, 10, 64)
 }
 
-func parseCustomResourceRequests(envVal string) (*v1.ResourceList, error) {
+func parseCustomResourceRequests(envVal string) (v1.ResourceList, error) {
 	resourceLst := make(v1.ResourceList)
 	err := json.Unmarshal([]byte(envVal), &resourceLst)
 	if err != nil {
 		return nil, err
 	}
 
-	return &resourceLst, err
+	return resourceLst, err
 }
 
 func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
