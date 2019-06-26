@@ -13,3 +13,7 @@ data:
     default_resource_request:
       - type: cpu
         quantity: 3600m
+      - type: storage
+        quantity: 10Gi
+      - type: ephemeral-storage
+        quantity: 100Mi
