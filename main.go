@@ -76,6 +76,10 @@ func main() {
 		}
 	}
 
+	if err = conf.ValidateDefaultResourceQuantity(defaultRequests); err != nil {
+		log.Panic(err)
+	}
+
 	httpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)
 	if err != nil {
 		log.Panic(err)

@@ -1,6 +1,8 @@
 package conf
 
 import (
+	"errors"
+	"fmt"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -60,4 +62,21 @@ func ParseResourceQuantity(confResources []ResourceQuantity) (v1.ResourceList, e
 	}
 
 	return result, nil
+}
+
+// Validate resource quantity
+func ValidateDefaultResourceQuantity(s v1.ResourceList) error {
+	// These quantities must be in configuration
+	resourceRequiredKeys := []v1.ResourceName{
+		v1.ResourceCPU, v1.ResourceStorage,
+	}
+
+	for _, k := range resourceRequiredKeys {
+		_, ok := s[k]
+		if !ok {
+			return errors.New(fmt.Sprintf("default resource quantity for '%s' is missing", k))
+		}
+	}
+
+	return nil
 }

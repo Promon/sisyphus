@@ -5,6 +5,8 @@ gcp_cache_bucket: gitlab_ci_cache
 default_resource_request:
   - type: cpu
     quantity: 3600m
+  - type: storage
+    quantity: 10Gi
 
 ## Shield runner reg token
 #  {
