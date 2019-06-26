@@ -2,17 +2,32 @@ package kubernetes
 
 import (
 	"errors"
+	"github.com/sirupsen/logrus"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
+	v14 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"sisyphus/protocol"
 	"sisyphus/shell"
+	"sync"
 )
+
+const sisyphusStorageClass = "topology-aware-fast"
+
+var ensureOnce sync.Once
 
 // Create new job and start it
 func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpec, k8sJobParams *K8SJobParameters, cacheBucket string) (*Job, error) {
+	ensureOnce.Do(func() {
+		err := ensureStorageClass(session.k8sClient)
+		if err != nil {
+			logrus.Error(err)
+		}
+	})
+
 	// Create config map volume with entrypoint script
 	script := shell.GenerateScript(spec, cacheBucket)
 	entrypointTemplate := newEntryPointScript(namePrefix, script)
@@ -50,6 +65,33 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 	}
 
 	return assignOwners(theJob)
+}
+
+// Ensure that custom storage class for PVC is created
+func ensureStorageClass(k8sClient *kubernetes.Clientset) error {
+	_, err := k8sClient.StorageV1().StorageClasses().Get(sisyphusStorageClass, v12.GetOptions{})
+	if err == nil {
+		return nil
+	}
+
+	bindingMode := v14.VolumeBindingWaitForFirstConsumer
+	sClass := v14.StorageClass{
+		ObjectMeta: v12.ObjectMeta{
+			Name: sisyphusStorageClass,
+		},
+		Provisioner:       "kubernetes.io/gce-pd",
+		VolumeBindingMode: &bindingMode,
+		Parameters: map[string]string{
+			"type": "pd-ssd",
+		},
+	}
+
+	_, err = k8sClient.StorageV1().StorageClasses().Create(&sClass)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // The Job is assigned as an owner of all other objects
@@ -130,13 +172,15 @@ func newEntryPointScript(nameTemplate string, script string) *v1.ConfigMap {
 }
 
 func newPvc(nameTemplate string, volumeSize resource.Quantity) *v1.PersistentVolumeClaim {
+	sClass := sisyphusStorageClass
 	return &v1.PersistentVolumeClaim{
 		ObjectMeta: v12.ObjectMeta{
 			GenerateName: nameTemplate,
 		},
 
 		Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+			AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+			StorageClassName: &sClass,
 			Resources: v1.ResourceRequirements{
 				Requests: map[v1.ResourceName]resource.Quantity{
 					v1.ResourceStorage: volumeSize,
@@ -226,6 +270,7 @@ func jobFromGitHubSpec(namePrefix string,
 
 					NodeSelector: map[string]string{
 						"cloud.google.com/gke-preemptible": "true",
+						"class":                            "sisyphus",
 					},
 				},
 			},
