@@ -96,6 +96,7 @@ func (s *ScriptContext) printPrelude(projectName string) {
 	// Make working dir
 	projectDir := "/build/sfs"
 	s.addFline("export CI_PROJECT_DIR=%s", projectDir)
+	s.addFline("rm -rf %s", projectDir)
 	s.addFline("mkdir -p '%s'", projectDir)
 	s.addFline("cd '%s'", projectDir)
 	s.addFline("pwd")
