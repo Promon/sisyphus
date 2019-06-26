@@ -1,5 +1,5 @@
 gitlab_url: https://git.dev.promon.no
-runner_token: xYTmzTuMux7gfszyjfyh
+runner_token: sEUxx5kCczGvnaAckX1A
 k8s_namespace: sisyphus-test
 gcp_cache_bucket: gitlab_ci_cache
 default_resource_request:
@@ -7,6 +7,8 @@ default_resource_request:
     quantity: 3600m
   - type: storage
     quantity: 10Gi
+  - type: ephemeral-storage
+    quantity: 100Mi
 
 ## Shield runner reg token
 #  {
@@ -14,5 +16,5 @@ default_resource_request:
 #    "token": "xYTmzTuMux7gfszyjfyh"
 #  }
 
-### Sisiphus token
+### Sisyphus token
 ##  kxZppSfxQjM6aAmAoxjo

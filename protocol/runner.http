@@ -14,7 +14,7 @@ Content-Type: application/json
 {
   "token": "xwBZ3KgHmKR8yYD3QA9U",
   "tag_list": [
-    "sisyphus"
+    "sisyphus-test"
   ],
   "description": "K8S runner"
 }

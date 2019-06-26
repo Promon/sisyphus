@@ -68,7 +68,7 @@ func ParseResourceQuantity(confResources []ResourceQuantity) (v1.ResourceList, e
 func ValidateDefaultResourceQuantity(s v1.ResourceList) error {
 	// These quantities must be in configuration
 	resourceRequiredKeys := []v1.ResourceName{
-		v1.ResourceCPU, v1.ResourceStorage,
+		v1.ResourceCPU, v1.ResourceStorage, v1.ResourceEphemeralStorage,
 	}
 
 	for _, k := range resourceRequiredKeys {
