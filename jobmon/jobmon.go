@@ -58,8 +58,9 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	labLog := logrus.New()
 	labLog.SetLevel(logrus.DebugLevel)
 	labLog.SetFormatter(&logrus.TextFormatter{
-		ForceColors:   true,
-		FullTimestamp: true,
+		ForceColors:            true,
+		FullTimestamp:          true,
+		DisableLevelTruncation: true,
 	})
 	labLog.SetOutput(logState.logBuffer)
 

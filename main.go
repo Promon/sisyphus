@@ -28,8 +28,9 @@ func init() {
 	// Initialize logger
 	log.SetLevel(log.DebugLevel)
 	log.SetFormatter(&log.TextFormatter{
-		ForceColors:   true,
-		FullTimestamp: true,
+		ForceColors:            true,
+		FullTimestamp:          true,
+		DisableLevelTruncation: true,
 	})
 
 	log.SetOutput(os.Stdout)
