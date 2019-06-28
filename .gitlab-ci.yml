@@ -9,8 +9,7 @@ basic build:
     - go build -x
   tags:
     - sisyphus-self-builder
-#  cache:
-#    paths:
-#      - .go/
-#    policy: pull-push
-#    key: sisyphus-cache
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - ./sisyphus

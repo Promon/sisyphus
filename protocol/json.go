@@ -76,11 +76,11 @@ type JobSpec struct {
 	AllowGitFetch bool            `json:"allow_git_fetch"`
 	Image         JobImage        `json:"image"`
 	GitInfo       JobGitInfo      `json:"git_info"`
-	Variables     []JobVariable   `json:"variables"`
-	Steps         []JobStep       `json:"steps"`
-	Artifacts     []JobArtifact   `json:"artifacts"`
-	Dependencies  []JobDependency `json:"dependencies"`
-	Cache         []JobCache      `json:"cache"`
+	Variables     []JobVariable   `json:"variables,omitempty"`
+	Steps         []JobStep       `json:"steps,omitempty"`
+	Artifacts     []JobArtifact   `json:"artifacts,omitempty"`
+	Dependencies  []JobDependency `json:"dependencies,omitempty"`
+	Cache         []JobCache      `json:"cache,omitempty"`
 }
 
 func ParseJobSpec(jsonData []byte) (*JobSpec, error) {
@@ -90,7 +90,33 @@ func ParseJobSpec(jsonData []byte) (*JobSpec, error) {
 		return nil, err
 	}
 
-	return &spec, nil
+	cleanSpec := cleanupJobSpec(spec)
+	return cleanSpec, nil
+}
+
+// Cleanup potential junk values sent by gitlab
+func cleanupJobSpec(origSpec JobSpec) *JobSpec {
+	newSpec := origSpec
+
+	// Clean cache spec
+	cleanCache := make([]JobCache, 0, len(origSpec.Cache))
+	for _, c := range origSpec.Cache {
+		if len(c.Key) > 0 && len(c.Paths) > 0 {
+			cleanCache = append(cleanCache, c)
+		}
+	}
+	newSpec.Cache = cleanCache
+
+	// Clean artifacts
+	cleanArtifacts := make([]JobArtifact, 0, len(origSpec.Artifacts))
+	for _, a := range origSpec.Artifacts {
+		if len(a.Paths) > 0 {
+			cleanArtifacts = append(cleanArtifacts, a)
+		}
+	}
+	newSpec.Artifacts = cleanArtifacts
+
+	return &newSpec
 }
 
 func GetEnvVars(spec *JobSpec) map[string]string {

@@ -104,6 +104,16 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 			return nil, err
 		}
 
+		if log.GetLevel() >= log.TraceLevel {
+			var prettyBuff bytes.Buffer
+			err = json.Indent(&prettyBuff, body, "", " ")
+			if err != nil {
+				log.Warn(err)
+			}
+
+			log.Tracef("Received new job `%s`", prettyBuff.String())
+		}
+
 		spec, err := ParseJobSpec(body)
 		if err != nil {
 			return nil, err

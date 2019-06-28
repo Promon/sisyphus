@@ -1,5 +1,8 @@
 gitlab_url: https://git.dev.promon.no
-runner_token: sEUxx5kCczGvnaAckX1A
+# test token
+#runner_token: sEUxx5kCczGvnaAckX1A
+# self builder token
+runner_token: sqYUuQ9wC-zxNBFUx36w
 k8s_namespace: sisyphus-test
 gcp_cache_bucket: gitlab_ci_cache
 default_node_selector:
