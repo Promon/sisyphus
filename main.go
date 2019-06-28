@@ -128,7 +128,12 @@ func main() {
 			if err != nil {
 				log.Error(err)
 			}
-			go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, workOk)
+
+			jobHttpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)
+			if err != nil {
+				log.Error(err)
+			}
+			go jobmon.RunJob(j, k8sSession, resReq, jobHttpSession, sConf.GcpCacheBucket, workOk)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
@@ -210,14 +215,27 @@ func parseCustomResourceRequests(envVal string) (v1.ResourceList, error) {
 	return resourceLst, err
 }
 
+// Check for next jobs
 func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
+	lmtTicker := time.NewTicker(1 * time.Second)
+	defer lmtTicker.Stop()
+
 	for range workOk {
-		nextJob, err := httpSession.PollNextJob(runnerToken)
-		if err != nil {
-			log.Warn(err)
-		} else if nextJob != nil {
-			newJobs <- nextJob
+
+		for { // loop until there is no more jobs to run
+			nextJob, err := httpSession.PollNextJob(runnerToken)
+			if err != nil {
+				log.Warn(err)
+				break
+			} else if nextJob != nil {
+				newJobs <- nextJob
+				continue
+			} else {
+				break
+			}
 		}
+
+		<-lmtTicker.C // limit the request frequency
 	}
 
 	log.Info("Work fetch loop terminated")
