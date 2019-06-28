@@ -42,7 +42,7 @@ profiles:
     deploy:
       helm:
         releases:
-          - name: sisyphus-runner
+          - name: sisyphus-self-builder
             chartPath: files/charts/sisyphus
             values:
               image: gcr.io/k8s-skaffold/sisyphus-runner

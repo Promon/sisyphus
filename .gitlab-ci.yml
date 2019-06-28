@@ -3,8 +3,8 @@ stages:
 
 image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-build-env:90d2039
 
-sample prepare:
-  stage: prepare
+basic build:
+  stage: build
   script:
     - go build -x
   tags:
