@@ -12,14 +12,26 @@ POST https://git.dev.promon.no/api/v4/runners
 Content-Type: application/json
 
 {
-  "token": "xwBZ3KgHmKR8yYD3QA9U",
+  "token": "mqztFVP2KQdPgFJi9naN",
   "tag_list": [
-    "sisyphus-test"
+    "sisyphus-self-builder"
   ],
-  "description": "K8S runner"
+  "description": "Golang builder for sisyphus"
 }
 
 ###
+# Sisyphus Self builder
+# {
+#  "id": 149,
+#  "token": "sqYUuQ9wC-zxNBFUx36w"
+#
+# }
+
+###
+##
+# Shield reg token
+#   "token": "xwBZ3KgHmKR8yYD3QA9U",
+
 # RESPONSE:
 #{
 #  "id": 129,

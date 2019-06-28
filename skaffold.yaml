@@ -37,3 +37,16 @@ profiles:
             overrides:
               runnerConf:
                 runnerToken: tZbC3Lq5kLfzdGXhLUBj
+
+  - name: self-builder
+    deploy:
+      helm:
+        releases:
+          - name: sisyphus-runner
+            chartPath: files/charts/sisyphus
+            values:
+              image: gcr.io/k8s-skaffold/sisyphus-runner
+            recreatePods: true
+            overrides:
+              runnerConf:
+                runnerToken: sqYUuQ9wC-zxNBFUx36w

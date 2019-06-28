@@ -1,47 +1,16 @@
 stages:
-  - prepare
   - build
 
-image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-runner:a588b56-dirty
+image: eu.gcr.io/qa-cloud-186211/gcr_io_k8s-skaffold_sisyphus-build-env:90d2039
 
 sample prepare:
   stage: prepare
   script:
-    - echo "Hello World !"
-    - mkdir -p ./.go
-    - export GOPATH=$(realpath ./.go)
-    - ls -Rlah ./.go
     - go build -x
   tags:
-    - golang
-  artifacts:
-    when: on_success
-    expire_in: 1 day
-    paths:
-      - ./README.md
-      - ./skaffold.yaml
-      - ./dockerfiles/*
-  cache:
-    paths:
-      - .go/
-    policy: pull-push
-    key: sisyphus-cache
-
-sample build:
-  stage: build
-
-  variables:
-    GIT_STRATEGY: none
-
-  script:
-    - ls -lah
-  tags:
-    - golang
-  dependencies:
-    - sample prepare
-  cache:
-    paths:
-      - .gradle/wrapper
-      - .gradle/caches
-    policy: pull-push
-    key: shielder-main-cache
+    - sisyphus-self-builder
+#  cache:
+#    paths:
+#      - .go/
+#    policy: pull-push
+#    key: sisyphus-cache
