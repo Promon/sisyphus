@@ -8,7 +8,7 @@ data:
   conf.yaml: |
     gitlab_url: https://git.dev.promon.no
     runner_token: {{ .Values.runnerConf.runnerToken | quote }}
-    k8s_namespace: sisyphus
+    k8s_namespace: {{ .Values.runnerConf.namespace | quote }}
     gcp_cache_bucket: gitlab_ci_cache
     default_node_selector:
       class: sisyphus

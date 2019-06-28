@@ -50,3 +50,4 @@ profiles:
             overrides:
               runnerConf:
                 runnerToken: sqYUuQ9wC-zxNBFUx36w
+                namespace: sisyphus-test
