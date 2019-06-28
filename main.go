@@ -117,7 +117,7 @@ func main() {
 			// Parse custom job parameters passed via env variables
 			vars := protocol.GetEnvVars(j)
 			//noinspection GoShadowedVar
-			resReq, err := createK8SJobConf(vars, defaultRequests)
+			resReq, err := loadCustomK8SJobParams(vars, defaultRequests, sConf.DefaultNodeSelector)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -143,30 +143,15 @@ func main() {
 	}
 }
 
-func createK8SJobConf(envVars map[string]string, defaultRequests v1.ResourceList) (*kubernetes.K8SJobParameters, error) {
-	//noinspection GoShadowedVar
-	resReq, err := parseCustomK8SJobParams(envVars, defaultRequests)
-
-	if err != nil {
-		return nil, err
-	} else {
-		if resReq.ResourceRequest == nil {
-			resReq.ResourceRequest = defaultRequests
-		}
-
-		if resReq.ActiveDeadlineSec <= 0 {
-			resReq.ActiveDeadlineSec = DefaultActiveDeadlineSeconds
-		}
-	}
-
-	return resReq, nil
-}
-
 //
-func parseCustomK8SJobParams(envVars map[string]string, defaultResourceRequest v1.ResourceList) (*kubernetes.K8SJobParameters, error) {
-	reqVal, ok := envVars[shell.SfsResourceRequest]
+func loadCustomK8SJobParams(envVars map[string]string,
+	defaultResourceRequest v1.ResourceList,
+	defaultNodeSelector map[string]string) (*kubernetes.K8SJobParameters, error) {
 
 	var params = kubernetes.K8SJobParameters{}
+
+	// Custom resource requests merged with default ones
+	reqVal, ok := envVars[shell.SfsResourceRequest]
 	if ok {
 		req, err := parseCustomResourceRequests(reqVal)
 		if err != nil {
@@ -181,23 +166,38 @@ func parseCustomK8SJobParams(envVars map[string]string, defaultResourceRequest v
 		}
 
 		params.ResourceRequest = req
+	} else {
+		params.ResourceRequest = defaultResourceRequest
 	}
 
+	// Custom deadline
 	dVal, ok := envVars[shell.SfsActiveDeadline]
 	if ok {
-		dLine, err := parseActiveDeadlineSec(dVal)
+		dLine, err := strconv.ParseInt(dVal, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 
 		params.ActiveDeadlineSec = dLine
+	} else {
+		params.ActiveDeadlineSec = DefaultActiveDeadlineSeconds
+	}
+
+	// Custom node selector
+	nSel, ok := envVars[shell.SfsNodeSelector]
+	if ok {
+		customNsel := make(map[string]string)
+		err := json.Unmarshal([]byte(nSel), &customNsel)
+		if err != nil {
+			return nil, err
+		}
+
+		params.NodeSelector = customNsel
+	} else {
+		params.NodeSelector = defaultNodeSelector
 	}
 
 	return &params, nil
-}
-
-func parseActiveDeadlineSec(envVal string) (int64, error) {
-	return strconv.ParseInt(envVal, 10, 64)
 }
 
 func parseCustomResourceRequests(envVal string) (v1.ResourceList, error) {

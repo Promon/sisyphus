@@ -33,8 +33,9 @@ type Job struct {
 
 // Additional parameters for K8S job spec
 type K8SJobParameters struct {
-	ResourceRequest   v1.ResourceList `json:"resource_request"`
-	ActiveDeadlineSec int64           `json:"active_deadline_sec"`
+	NodeSelector      map[string]string `json:"node_selector"`
+	ResourceRequest   v1.ResourceList   `json:"resource_request"`
+	ActiveDeadlineSec int64             `json:"active_deadline_sec"`
 }
 
 // Get job status

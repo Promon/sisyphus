@@ -36,19 +36,19 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 		return nil, err
 	}
 
-	// Create PVC
+	// Create new PVC
 	pvcTemplate := newPvc(namePrefix, k8sJobParams.ResourceRequest[v1.ResourceStorage])
 	pvc, err := session.k8sClient.CoreV1().PersistentVolumeClaims(session.Namespace).Create(pvcTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create Job
+	// Create new Job
 	qCpu, ok := k8sJobParams.ResourceRequest[v1.ResourceCPU]
 	if !ok {
 		return nil, errors.New("unknown quantity of cpu request")
 	}
-	jobTemplate := jobFromGitHubSpec(namePrefix, spec, k8sJobParams.ActiveDeadlineSec, qCpu, entrypoint.Name, pvc.Name)
+	jobTemplate := jobFromGitHubSpec(namePrefix, spec, k8sJobParams.ActiveDeadlineSec, k8sJobParams.NodeSelector, qCpu, entrypoint.Name, pvc.Name)
 	k8sJob, err := session.k8sClient.BatchV1().Jobs(session.Namespace).Create(jobTemplate)
 	if err != nil {
 		return nil, err
@@ -194,6 +194,7 @@ func newPvc(nameTemplate string, volumeSize resource.Quantity) *v1.PersistentVol
 func jobFromGitHubSpec(namePrefix string,
 	spec *protocol.JobSpec,
 	activeDeadlineSec int64,
+	nodeSelector map[string]string,
 	cpuRequest resource.Quantity,
 	entryPointName string,
 	pvcName string) *v13.Job {
@@ -268,10 +269,7 @@ func jobFromGitHubSpec(namePrefix string,
 						},
 					},
 
-					NodeSelector: map[string]string{
-						"cloud.google.com/gke-preemptible": "true",
-						"class":                            "sisyphus",
-					},
+					NodeSelector: nodeSelector,
 				},
 			},
 		},

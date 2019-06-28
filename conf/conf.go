@@ -23,7 +23,10 @@ type SisyphusConf struct {
 	// GCP cache bucket
 	GcpCacheBucket string `yaml:"gcp_cache_bucket"`
 
-	// Optional Default resource requests for new jobs
+	// Default node selector for new jobs
+	DefaultNodeSelector map[string]string `yaml:"default_node_selector"`
+
+	// Default resource requests for new jobs
 	DefaultResourceRequest []ResourceQuantity `yaml:"default_resource_request"`
 }
 

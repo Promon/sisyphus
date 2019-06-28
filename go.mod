@@ -3,7 +3,6 @@ module sisyphus
 go 1.12
 
 require (
-	github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550
 	github.com/sirupsen/logrus v1.4.2
 	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20190602125759-c1e9adbde704

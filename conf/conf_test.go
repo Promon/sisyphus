@@ -13,6 +13,11 @@ func Test_Conf(t *testing.T) {
 		GcpCacheBucket: "test_bucket",
 		K8SNamespace:   "builder",
 
+		DefaultNodeSelector: map[string]string{
+			"cloud.google.com/gke-preemptible": "true",
+			"class":                            "sisyphus",
+		},
+
 		DefaultResourceRequest: []ResourceQuantity{
 			{Type: "cpu", Quantity: "1000m"},
 		},

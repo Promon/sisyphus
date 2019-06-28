@@ -10,4 +10,9 @@ const (
 
 	// The number of seconds after job start until it is killed
 	SfsActiveDeadline = "SFS_ACTIVE_DEADLINE_SEC"
+
+	// The node selector allows to assign pods to nodes
+	// Should be json encoded map like '{"type"="ci", "preemptible"="true" ...}'
+	// https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	SfsNodeSelector = "SFS_NODE_SELECTOR"
 )
