@@ -99,8 +99,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	// Queue with ticks
-	stopChan := make(chan bool, BurstLimit)
+	// Channel used to inform goroutines that the service is shutting down
+	stopChan := make(chan bool)
 
 	// Queue for new jobs from gitlab
 	newJobs := make(chan *protocol.JobSpec, BurstLimit)
@@ -109,10 +109,6 @@ func main() {
 	// Handle OS signals
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-
-	// Ticker used to rate limit requests
-	//ticktock := time.NewTicker(100 * time.Millisecond)
-	//defer ticktock.Stop()
 
 	// Main event loop
 	for {

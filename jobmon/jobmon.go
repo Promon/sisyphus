@@ -107,7 +107,6 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			}
 
 			js := status.Job.Status
-			ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
 
 			// The pod must be not in pending or unknown state to have logs
 			builderPhase := status.PodPhases[k.ContainerNameBuilder]
@@ -170,6 +169,9 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 }
 
 func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error {
+	logState.logBufferMux.Lock()
+	defer logState.logBufferMux.Unlock()
+
 	if logState.logBuffer.Len() > 0 {
 		err := backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
 		if err != nil {

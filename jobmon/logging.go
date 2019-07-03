@@ -8,6 +8,7 @@ import (
 	"regexp"
 	k "sisyphus/kubernetes"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,9 +21,12 @@ type LogState struct {
 	lastLogLineTimestamp *time.Time
 
 	// Memory of previous lines
-	previousLineHash  []uint64
-	localLogger       *logrus.Entry
-	logBuffer         *bytes.Buffer
+	previousLineHash []uint64
+	localLogger      *logrus.Entry
+
+	logBuffer    *bytes.Buffer
+	logBufferMux sync.Mutex
+
 	gitlabStartOffset int
 	lineBreakRegexp   *regexp.Regexp
 }
@@ -88,6 +92,9 @@ func (ls *LogState) printLog(logChunk *bytes.Buffer) error {
 	}
 
 	// print lines to gitlab buffer
+	ls.logBufferMux.Lock()
+	defer ls.logBufferMux.Unlock()
+
 	for _, l := range filteredLines {
 		_, err := fmt.Fprintln(ls.logBuffer, l.text)
 		if err != nil {
