@@ -12,12 +12,25 @@ POST https://git.dev.promon.no/api/v4/runners
 Content-Type: application/json
 
 {
-  "token": "mqztFVP2KQdPgFJi9naN",
+  "token": "pcShtozPrANjhJScz-3X",
   "tag_list": [
-    "sisyphus-self-builder"
+    "sisyphus-roboshielder-test"
   ],
-  "description": "Golang builder for sisyphus"
+  "description": "Test Builder for roboshielder"
 }
+
+
+###
+//POST https://git.dev.promon.no/api/v4/runners
+//Content-Type: application/json
+//
+//{
+//"token": "mqztFVP2KQdPgFJi9naN",
+//"tag_list": [
+//"sisyphus-self-builder"
+//],
+//"description": "Golang builder for sisyphus"
+//}
 
 ###
 # Sisyphus Self builder

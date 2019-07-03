@@ -14,6 +14,8 @@ type ResourceQuantity struct {
 }
 
 type SisyphusConf struct {
+	// THe name of the runner. used by google profiler
+	RunnerName string `yaml:"runner_name"`
 	// The url to gitlab. Not api url
 	GitlabUrl string `yaml:"gitlab_url"`
 	// The token for registered runner

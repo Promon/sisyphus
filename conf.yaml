@@ -2,7 +2,18 @@ gitlab_url: https://git.dev.promon.no
 # test token
 #runner_token: sEUxx5kCczGvnaAckX1A
 # self builder token
-runner_token: sqYUuQ9wC-zxNBFUx36w
+
+##
+## Roboshielder-test token
+#  {
+#    "id": 152,
+#    "token": "wwyabp6goM4hyzjz1fbv"
+#  }
+
+#
+# Sisyphus test token sqYUuQ9wC-zxNBFUx36w
+runner_name: test-runner
+runner_token: wwyabp6goM4hyzjz1fbv
 k8s_namespace: sisyphus-test
 gcp_cache_bucket: gitlab_ci_cache
 default_node_selector:

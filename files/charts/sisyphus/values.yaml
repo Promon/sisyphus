@@ -11,6 +11,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 runnerConf:
+  runnerName: sisyphus-test
   runnerToken: xYTmzTuMux7gfszyjfyh
   namespace: sisyphus
 

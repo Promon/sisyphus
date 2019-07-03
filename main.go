@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cloud.google.com/go/profiler"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -36,10 +37,12 @@ func init() {
 	log.SetOutput(os.Stdout)
 }
 
-func readConf(inClusterOpt *bool) (*conf.SisyphusConf, error) {
+func readConf(inClusterOpt *bool, enableGCEProfilerOpt *bool) (*conf.SisyphusConf, error) {
 	var confPath string
+
 	flag.StringVar(&confPath, "conf", "", "The `conf.yaml` file")
 	flag.BoolVar(inClusterOpt, "in-cluster", false, "Use in-cluster config, when running inside cluster")
+	flag.BoolVar(enableGCEProfilerOpt, "gce-profiler", false, "Enable GCE cloud profiler")
 	flag.Parse()
 
 	if len(confPath) == 0 {
@@ -62,11 +65,21 @@ func readConf(inClusterOpt *bool) (*conf.SisyphusConf, error) {
 func main() {
 	log.Info("Hello.")
 	var inCluster = false
-	sConf, err := readConf(&inCluster)
+	var gceProfiler = false
+	sConf, err := readConf(&inCluster, &gceProfiler)
 	if err != nil {
 		log.Panic(err)
 	}
 	log.Infof("In Cluster config: %v", inCluster)
+	log.Infof("GCE profiler: %v", gceProfiler)
+
+	// GCE profiler
+	if gceProfiler {
+		err = startGceProfiler(sConf.RunnerName)
+		if err != nil {
+			log.Panic(err)
+		}
+	}
 
 	// Parse request quantities
 	var defaultRequests v1.ResourceList
@@ -239,4 +252,12 @@ func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, ne
 	}
 
 	log.Info("Work fetch loop terminated")
+}
+
+func startGceProfiler(serviceName string) error {
+	profilerConf := profiler.Config{
+		Service: serviceName,
+	}
+
+	return profiler.Start(profilerConf)
 }

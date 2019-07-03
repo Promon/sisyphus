@@ -25,7 +25,7 @@ spec:
           image: "{{ .Values.image }}"
           imagePullPolicy: Always
           command: ["sisyphus"]
-          args: ["--conf", "/etc/sisyphus/conf.yaml", "--in-cluster"]
+          args: ["--conf", "/etc/sisyphus/conf.yaml", "--in-cluster", "--gce-profiler"]
 
           volumeMounts:
             - mountPath: /etc/sisyphus

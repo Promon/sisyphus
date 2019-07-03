@@ -6,6 +6,7 @@ metadata:
 {{ include "sisyphus.labels" . | indent 4 }}
 data:
   conf.yaml: |
+    runner_name: {{ .Values.runnerConf.runnerName }}
     gitlab_url: https://git.dev.promon.no
     runner_token: {{ .Values.runnerConf.runnerToken | quote }}
     k8s_namespace: {{ .Values.runnerConf.namespace | quote }}

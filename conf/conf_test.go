@@ -8,6 +8,7 @@ import (
 
 func Test_Conf(t *testing.T) {
 	orig := SisyphusConf{
+		RunnerName:     "test-runner",
 		RunnerToken:    "abcdef1234567",
 		GitlabUrl:      "https://www.gitlab.abc",
 		GcpCacheBucket: "test_bucket",

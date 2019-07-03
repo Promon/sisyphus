@@ -36,6 +36,7 @@ profiles:
             recreatePods: true
             overrides:
               runnerConf:
+                runnerName: sisyphus-production
                 runnerToken: tZbC3Lq5kLfzdGXhLUBj
 
   - name: self-builder
@@ -49,5 +50,6 @@ profiles:
             recreatePods: true
             overrides:
               runnerConf:
+                runnerName: sisyphus-self-builder
                 runnerToken: sqYUuQ9wC-zxNBFUx36w
                 namespace: sisyphus-test
