@@ -89,17 +89,21 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	backChannel.syncJobStatus(protocol.Pending)
 
 	// Rate limiter for this routine
-	tickLimiter := time.NewTicker(1 * time.Second)
-	defer tickLimiter.Stop()
+	tickJobState := time.NewTicker(1 * time.Second)
+	tickGitLabLog := time.NewTicker(1 * time.Second)
+
+	defer tickJobState.Stop()
+	defer tickGitLabLog.Stop()
 
 	for {
 		select {
 
-		case <-tickLimiter.C:
+		case <-tickJobState.C:
 			status, err := job.GetK8SJobStatus()
 			if err != nil {
 				ctxLogger.Warn(err)
 				labLog.Warn(err)
+				continue
 			}
 
 			js := status.Job.Status
@@ -121,6 +125,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				if err != nil {
 					ctxLogger.Warn(err)
 					labLog.Warn(err)
+					continue
 				}
 			} else if builderPhase == v1.PodPending {
 				gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
@@ -147,16 +152,18 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				logPush()
 				backChannel.syncJobStatus(protocol.Success)
 				return
-			default:
-				// Just push logs to gitlab
-				logPush()
 			}
+
+			// push logs to gitlab
+		case <-tickGitLabLog.C:
+			logPush()
 
 		case <-stopChan:
 			// the runner is killed
 			labLog.Error("The runner was killed")
 			logPush()
 			backChannel.syncJobStatus(protocol.Failed)
+			return
 		}
 	}
 
