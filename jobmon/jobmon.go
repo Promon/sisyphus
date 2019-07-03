@@ -13,7 +13,7 @@ import (
 )
 
 // Create job from descriptor and monitor loop
-func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJobParameters, httpSession *protocol.RunnerHttpSession, cacheBucket string, workOk <-chan bool) {
+func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJobParameters, httpSession *protocol.RunnerHttpSession, cacheBucket string, stopChan <-chan bool) {
 	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
 
 	rrq, err := protocol.ToFlatJson(k8sJobParams)
@@ -39,12 +39,12 @@ func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJo
 		logrus.Error(err)
 		return
 	} else {
-		monitorJob(job, httpSession, spec.Id, spec.Token, workOk)
+		monitorJob(job, httpSession, spec.Id, spec.Token, stopChan)
 	}
 }
 
 // Monitor job loop
-func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, workOk <-chan bool) {
+func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, stopChan <-chan bool) {
 	ctxLogger := logrus.WithFields(
 		logrus.Fields{
 			"k8sjob":    job.Name,
@@ -92,70 +92,74 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	tickLimiter := time.NewTicker(1 * time.Second)
 	defer tickLimiter.Stop()
 
-	for range workOk {
-		<-tickLimiter.C
+	for {
+		select {
 
-		status, err := job.GetK8SJobStatus()
-		if err != nil {
-			ctxLogger.Warn(err)
-			labLog.Warn(err)
-		}
-
-		js := status.Job.Status
-		ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
-
-		// The pod must be not in pending or unknown state to have logs
-		builderPhase := status.PodPhases[k.ContainerNameBuilder]
-		if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
-			// Job canceled remotely
-			gitlabStatus := backChannel.syncJobStatus(protocol.Running)
-			if cancelRequested(gitlabStatus) {
-				ctxLogger.Info("Job canceled")
-				return
-			}
-
-			// Fetch logs from K8S
-			//noinspection GoShadowedVar
-			err := logState.bufferLogs(job)
+		case <-tickLimiter.C:
+			status, err := job.GetK8SJobStatus()
 			if err != nil {
 				ctxLogger.Warn(err)
 				labLog.Warn(err)
 			}
-		} else if builderPhase == v1.PodPending {
-			gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
-			if cancelRequested(gitlabStatus) {
-				ctxLogger.Info("Job canceled")
-				return
-			} else {
-				podInfo := podsInfoMessage(status.Pods)
-				labLog.Infof("PENDING %s", podInfo)
-			}
-		}
 
-		switch {
-		case js.Failed > 0 ||
-			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
-			labLog.Errorf("Job Failed %s", podsInfoMessage(status.Pods))
+			js := status.Job.Status
+			ctxLogger.Debugf("Status Active %v, failed %v, succeeded %v", js.Active, js.Failed, js.Succeeded)
+
+			// The pod must be not in pending or unknown state to have logs
+			builderPhase := status.PodPhases[k.ContainerNameBuilder]
+			if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
+				// Job canceled remotely
+				gitlabStatus := backChannel.syncJobStatus(protocol.Running)
+				if cancelRequested(gitlabStatus) {
+					ctxLogger.Info("Job canceled")
+					return
+				}
+
+				// Fetch logs from K8S
+				//noinspection GoShadowedVar
+				err := logState.bufferLogs(job)
+				if err != nil {
+					ctxLogger.Warn(err)
+					labLog.Warn(err)
+				}
+			} else if builderPhase == v1.PodPending {
+				gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
+				if cancelRequested(gitlabStatus) {
+					ctxLogger.Info("Job canceled")
+					return
+				} else {
+					podInfo := podsInfoMessage(status.Pods)
+					labLog.Infof("PENDING %s", podInfo)
+				}
+			}
+
+			switch {
+			case js.Failed > 0 ||
+				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
+				labLog.Errorf("Job Failed %s", podsInfoMessage(status.Pods))
+				logPush()
+				backChannel.syncJobStatus(protocol.Failed)
+				return
+
+			case js.Succeeded > 0 && js.Active == 0 ||
+				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
+				labLog.Infof("OK %s", podsInfoMessage(status.Pods))
+				logPush()
+				backChannel.syncJobStatus(protocol.Success)
+				return
+			default:
+				// Just push logs to gitlab
+				logPush()
+			}
+
+		case <-stopChan:
+			// the runner is killed
+			labLog.Error("The runner was killed")
 			logPush()
 			backChannel.syncJobStatus(protocol.Failed)
-			return
-
-		case js.Succeeded > 0 && js.Active == 0 ||
-			(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
-			labLog.Infof("OK %s", podsInfoMessage(status.Pods))
-			logPush()
-			backChannel.syncJobStatus(protocol.Success)
-			return
-		default:
-			// Just push logs to gitlab
-			logPush()
 		}
 	}
 
-	// Out of loop means the runner is killed
-	defer backChannel.syncJobStatus(protocol.Failed)
-	labLog.Error("The runner was killed")
-	logPush()
 }
 
 func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error {

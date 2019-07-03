@@ -100,29 +100,23 @@ func main() {
 	}
 
 	// Queue with ticks
-	workOk := make(chan bool, BurstLimit)
+	stopChan := make(chan bool, BurstLimit)
 
 	// Queue for new jobs from gitlab
 	newJobs := make(chan *protocol.JobSpec, BurstLimit)
-	go nextJobLoop(httpSession, sConf.RunnerToken, newJobs, workOk)
+	go nextJobLoop(httpSession, sConf.RunnerToken, newJobs, stopChan)
 
 	// Handle OS signals
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Ticker used to rate limit requests
-	ticktock := time.NewTicker(100 * time.Millisecond)
-	defer ticktock.Stop()
+	//ticktock := time.NewTicker(100 * time.Millisecond)
+	//defer ticktock.Stop()
 
 	// Main event loop
 	for {
 		select {
-		case <-ticktock.C:
-			// Allocate 1 job monitoring cycle per tick
-			if len(workOk) < BurstLimit {
-				workOk <- true
-			}
-
 		case j := <-newJobs:
 			ji := j.JobInfo
 			log.Infof("New job received. proj=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
@@ -146,11 +140,11 @@ func main() {
 			if err != nil {
 				log.Error(err)
 			}
-			go jobmon.RunJob(j, k8sSession, resReq, jobHttpSession, sConf.GcpCacheBucket, workOk)
+			go jobmon.RunJob(j, k8sSession, resReq, jobHttpSession, sConf.GcpCacheBucket, stopChan)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
-			close(workOk)
+			close(stopChan)
 			time.Sleep(5 * time.Second)
 			return
 
@@ -229,29 +223,32 @@ func parseCustomResourceRequests(envVal string) (v1.ResourceList, error) {
 }
 
 // Check for next jobs
-func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, workOk <-chan bool) {
+func nextJobLoop(httpSession *protocol.RunnerHttpSession, runnerToken string, newJobs chan<- *protocol.JobSpec, stopChan <-chan bool) {
+	log.Infof("Starting work fetch loop")
 	lmtTicker := time.NewTicker(1 * time.Second)
 	defer lmtTicker.Stop()
 
-	for range workOk {
-
-		for { // loop until there is no more jobs to run
-			nextJob, err := httpSession.PollNextJob(runnerToken)
-			if err != nil {
-				log.Warn(err)
-				break
-			} else if nextJob != nil {
-				newJobs <- nextJob
-				continue
-			} else {
-				break
+	for {
+		select {
+		case <-lmtTicker.C:
+			for { // loop until there is no more jobs to run
+				nextJob, err := httpSession.PollNextJob(runnerToken)
+				if err != nil {
+					log.Warn(err)
+					break
+				} else if nextJob != nil {
+					newJobs <- nextJob
+					continue
+				} else {
+					break
+				}
 			}
+
+		case <-stopChan: // break the loop
+			log.Info("Work fetch loop terminated")
+			return
 		}
-
-		<-lmtTicker.C // limit the request frequency
 	}
-
-	log.Info("Work fetch loop terminated")
 }
 
 func startGceProfiler(serviceName string) error {
