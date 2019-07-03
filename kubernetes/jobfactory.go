@@ -218,7 +218,7 @@ func jobFromGitHubSpec(namePrefix string,
 					Containers: []v1.Container{
 						{
 							Name:    ContainerNameBuilder,
-							Command: []string{"/jobscripts/entrypoint.sh"},
+							Command: []string{"/jobscripts/entrypoint.sh", "||", "sleep 5"},
 
 							// Image
 							Image:           spec.Image.Name,
