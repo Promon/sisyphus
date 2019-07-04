@@ -2,7 +2,6 @@ package kubernetes
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -88,49 +87,33 @@ func (j *Job) GetK8SJobStatus() (*K8SJobStatus, error) {
 	}, nil
 }
 
-// Get logs stream
-func (j *Job) GetLog(sinceTime *time.Time) (*bytes.Buffer, error) {
-	controllerUid := j.k8sJob.GetUID()
-	pods, err := getPodsOfController(j.k8sClient, j.namespace, controllerUid)
+// Get logs of pod
+func (j *Job) GetPodLog(podName string, sinceTime *time.Time) (*bytes.Buffer, error) {
+	logOpts := v1.PodLogOptions{
+		Container:  ContainerNameBuilder,
+		Timestamps: true,
+	}
 
+	if sinceTime != nil {
+		logOpts.SinceTime = &metav1.Time{Time: *sinceTime}
+	}
+	resp := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(podName, &logOpts)
+	//noinspection GoShadowedVar
+	respStream, err := resp.Stream()
+	if err != nil {
+		return nil, err
+	}
+	//noinspection GoUnhandledErrorResult,GoDeferInLoop
+	defer respStream.Close()
+
+	// Copy to buffer
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, respStream)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, pod := range pods {
-		for _, ctr := range pod.Spec.Containers {
-			if ctr.Name == ContainerNameBuilder {
-
-				logOpts := v1.PodLogOptions{
-					Container:  ctr.Name,
-					Timestamps: true,
-				}
-
-				if sinceTime != nil {
-					logOpts.SinceTime = &metav1.Time{Time: *sinceTime}
-				}
-				resp := j.k8sClient.CoreV1().Pods(j.namespace).GetLogs(pod.GetName(), &logOpts)
-				//noinspection GoShadowedVar
-				respStream, err := resp.Stream()
-				if err != nil {
-					return nil, err
-				}
-				//noinspection GoUnhandledErrorResult,GoDeferInLoop
-				defer respStream.Close()
-
-				// Copy to buffer
-				var buf bytes.Buffer
-				_, err = io.Copy(&buf, respStream)
-				if err != nil {
-					return nil, err
-				}
-
-				return &buf, nil
-			}
-		}
-	}
-
-	return nil, errors.New("can not find running pod to extract logs")
+	return &buf, nil
 }
 
 // Delete job

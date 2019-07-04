@@ -36,13 +36,14 @@ const (
 	PreviousLineMemorySize = 10240
 )
 
-func (ls *logState) bufferLogs(job *k.Job) error {
+func (ls *logState) bufferLogs(job *k.Job, podName string) error {
 	// Fetch logs with timeout
 	chChunk := make(chan *bytes.Buffer, 1)
 	chErr := make(chan error, 1)
 
 	go func() {
-		rdr, err := job.GetLog(ls.lastLogLineTimestamp)
+		rdr, err := job.GetPodLog(podName, ls.lastLogLineTimestamp)
+
 		if err != nil {
 			chErr <- err
 			return

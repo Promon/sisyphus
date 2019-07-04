@@ -1,6 +1,7 @@
 package jobmon
 
 import (
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/api/batch/v1"
@@ -122,9 +123,17 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			// The pod must be not in pending or unknown state to have logs
 			builderPhase := status.PodPhases[k.ContainerNameBuilder]
 			if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
-				// Fetch logs from K8S
+				// find pod for builder
 				//noinspection GoShadowedVar
-				err := loggingState.bufferLogs(job)
+				podName, err := findPodOfContainer(status.Pods, k.ContainerNameBuilder)
+				if err != nil {
+					ctxLogger.Warn(err)
+					labLog.Warn(err)
+					continue
+				}
+
+				// Fetch logs from K8S
+				err = loggingState.bufferLogs(job, podName)
 				if err != nil {
 					ctxLogger.Warn(err)
 					labLog.Warn(err)
@@ -201,4 +210,16 @@ func podsInfoMessage(pods []v1.Pod) string {
 func podStatusMessage(pod v1.Pod) string {
 	status := pod.Status
 	return fmt.Sprintf("[pod='%s' phase='%s' reason='%s' msg='%s']", pod.Name, status.Phase, status.Reason, status.Message)
+}
+
+func findPodOfContainer(pods []v1.Pod, containerName string) (string, error) {
+	for _, pod := range pods {
+		for _, ctr := range pod.Spec.Containers {
+			if ctr.Name == containerName {
+				return pod.Name, nil
+			}
+		}
+	}
+
+	return "", errors.New(fmt.Sprintf("can not find pod for container '%s'", containerName))
 }
