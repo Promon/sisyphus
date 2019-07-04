@@ -90,7 +90,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	// Rate limiter for this routine
 	tickJobState := time.NewTicker(1 * time.Second)
-	tickGitLabLog := time.NewTicker(1 * time.Second)
+	tickGitLabLog := time.NewTicker(5 * time.Second)
 
 	defer tickJobState.Stop()
 	defer tickGitLabLog.Stop()
