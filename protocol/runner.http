@@ -12,9 +12,9 @@ POST https://git.dev.promon.no/api/v4/runners
 Content-Type: application/json
 
 {
-  "token": "pcShtozPrANjhJScz-3X",
+  "token": "xwBZ3KgHmKR8yYD3QA9U",
   "tag_list": [
-    "sisyphus-roboshielder-test"
+    "sisyphus-debug"
   ],
   "description": "Test Builder for roboshielder"
 }

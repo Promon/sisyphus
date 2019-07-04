@@ -132,11 +132,7 @@ func main() {
 				log.Error(err)
 			}
 
-			jobHttpSession, err := protocol.NewHttpSession(sConf.GitlabUrl)
-			if err != nil {
-				log.Error(err)
-			}
-			go jobmon.RunJob(j, k8sSession, resReq, jobHttpSession, sConf.GcpCacheBucket, stopChan)
+			go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, stopChan)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)
@@ -145,7 +141,6 @@ func main() {
 			return
 
 		default:
-			log.Trace("No activity")
 			time.Sleep(1 * time.Second)
 		}
 	}

@@ -51,7 +51,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			"gitlabjob": jobId,
 		})
 
-	logState := newLogState(ctxLogger)
+	loggingState := newLogState(ctxLogger)
 
 	// Logger for gitlab trace
 	// Writes log messages directly to gitlab console
@@ -62,9 +62,9 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		FullTimestamp:          true,
 		DisableLevelTruncation: true,
 	})
-	labLog.SetOutput(logState.logBuffer)
+	labLog.SetOutput(loggingState.logBuffer)
 
-	backChannel := GitlabBackChannel{
+	backChannel := gitLabBackChannel{
 		httpSession:    httpSession,
 		jobId:          jobId,
 		gitlabJobToken: gitlabJobToken,
@@ -80,7 +80,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	}()
 
 	logPush := func() {
-		err := pushLogsToGitlab(logState, &backChannel)
+		err := pushLogsToGitlab(loggingState, &backChannel)
 		if err != nil {
 			ctxLogger.Warn("Failed to push logs to gitlab")
 		}
@@ -90,7 +90,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	// Rate limiter for this routine
 	tickJobState := time.NewTicker(1 * time.Second)
-	tickGitLabLog := time.NewTicker(5 * time.Second)
+	tickGitLabLog := time.NewTicker(1 * time.Second)
 
 	defer tickJobState.Stop()
 	defer tickGitLabLog.Stop()
@@ -106,35 +106,33 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				continue
 			}
 
+			// Handle jobs canceled by gitlab
+			gitlabStatus := backChannel.syncJobStatus(protocol.Running)
+			switch {
+			case gitlabStatus.StatusCode == http.StatusForbidden:
+				ctxLogger.Info("Job canceled")
+				return
+			case gitlabStatus.StatusCode != http.StatusOK:
+				ctxLogger.Warnf("Unknown gitlab status response code '%d', msg '%s'", gitlabStatus.StatusCode, gitlabStatus.RemoteState)
+				continue
+			}
+
 			js := status.Job.Status
 
 			// The pod must be not in pending or unknown state to have logs
 			builderPhase := status.PodPhases[k.ContainerNameBuilder]
 			if builderPhase == v1.PodRunning || builderPhase == v1.PodSucceeded || builderPhase == v1.PodFailed {
-				// Job canceled remotely
-				gitlabStatus := backChannel.syncJobStatus(protocol.Running)
-				if cancelRequested(gitlabStatus) {
-					ctxLogger.Info("Job canceled")
-					return
-				}
-
 				// Fetch logs from K8S
 				//noinspection GoShadowedVar
-				err := logState.bufferLogs(job)
+				err := loggingState.bufferLogs(job)
 				if err != nil {
 					ctxLogger.Warn(err)
 					labLog.Warn(err)
 					continue
 				}
 			} else if builderPhase == v1.PodPending {
-				gitlabStatus := backChannel.syncJobStatus(protocol.Pending)
-				if cancelRequested(gitlabStatus) {
-					ctxLogger.Info("Job canceled")
-					return
-				} else {
-					podInfo := podsInfoMessage(status.Pods)
-					labLog.Infof("PENDING %s", podInfo)
-				}
+				podInfo := podsInfoMessage(status.Pods)
+				labLog.Infof("PENDING %s", podInfo)
 			}
 
 			switch {
@@ -168,7 +166,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 }
 
-func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error {
+func pushLogsToGitlab(logState *logState, backChannel *gitLabBackChannel) error {
 	logState.logBufferMux.Lock()
 	defer logState.logBufferMux.Unlock()
 
@@ -185,17 +183,6 @@ func pushLogsToGitlab(logState *LogState, backChannel *GitlabBackChannel) error 
 	}
 
 	return nil
-}
-
-func cancelRequested(state *protocol.RemoteJobState) bool {
-	switch {
-	case state == nil:
-		return false
-	case state.StatusCode != http.StatusOK:
-		return true
-	default:
-		return false
-	}
 }
 
 func podsInfoMessage(pods []v1.Pod) string {

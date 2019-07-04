@@ -17,7 +17,7 @@ type LogLine struct {
 	text      string
 }
 
-type LogState struct {
+type logState struct {
 	lastLogLineTimestamp *time.Time
 
 	// Memory of previous lines
@@ -36,7 +36,7 @@ const (
 	PreviousLineMemorySize = 10240
 )
 
-func (ls *LogState) bufferLogs(job *k.Job) error {
+func (ls *logState) bufferLogs(job *k.Job) error {
 	// Fetch logs with timeout
 	chChunk := make(chan *bytes.Buffer, 1)
 	chErr := make(chan error, 1)
@@ -63,7 +63,7 @@ func (ls *LogState) bufferLogs(job *k.Job) error {
 	}
 }
 
-func (ls *LogState) printLog(logChunk *bytes.Buffer) error {
+func (ls *logState) printLog(logChunk *bytes.Buffer) error {
 
 	// Filter trimLines
 	tmpLines := ls.lineBreakRegexp.Split(logChunk.String(), -1)
@@ -105,9 +105,9 @@ func (ls *LogState) printLog(logChunk *bytes.Buffer) error {
 	return nil
 }
 
-func newLogState(localLogger *logrus.Entry) *LogState {
+func newLogState(localLogger *logrus.Entry) *logState {
 	var logBuff bytes.Buffer
-	return &LogState{
+	return &logState{
 		lastLogLineTimestamp: nil,
 		logBuffer:            &logBuff,
 		gitlabStartOffset:    0,
