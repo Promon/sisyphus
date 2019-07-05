@@ -1,12 +1,12 @@
 stages:
   - build
 
-image: eu.gcr.io/qa-cloud-186211/gcr.io/k8s-skaffold/sisyphus-build-env:53781f1
+image: eu.gcr.io/qa-cloud-186211/gcr.io/k8s-skaffold/sisyphus-build-env:dbff40d
 
 basic build:
   stage: build
   script:
-    - go build -x
+    - go build -v -buildmode=exe
   tags:
     - sisyphus-self-builder
   artifacts:

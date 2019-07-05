@@ -73,7 +73,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	}
 
 	defer func() {
-		ctxLogger.Debugf("Deleting Job %v", job.Name)
+		ctxLogger.Infof("Deleting job %v", job.Name)
 		err := job.Delete()
 		if err != nil {
 			ctxLogger.Error(err)
@@ -83,7 +83,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	logPush := func() {
 		err := pushLogsToGitlab(loggingState, &backChannel)
 		if err != nil {
-			ctxLogger.Warn("Failed to push logs to gitlab")
+			ctxLogger.Warn(err)
 		}
 	}
 
@@ -147,14 +147,20 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			switch {
 			case js.Failed > 0 ||
 				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
-				labLog.Errorf("Job Failed %s", podsInfoMessage(status.Pods))
+				msg := fmt.Sprintf("Job Failed %s", podsInfoMessage(status.Pods))
+				ctxLogger.Warn(msg)
+				labLog.Error(msg)
+
 				logPush()
 				backChannel.syncJobStatus(protocol.Failed)
 				return
 
 			case js.Succeeded > 0 && js.Active == 0 ||
 				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
-				labLog.Infof("OK %s", podsInfoMessage(status.Pods))
+				msg := fmt.Sprintf("OK %s", podsInfoMessage(status.Pods))
+				ctxLogger.Info(msg)
+				labLog.Info(msg)
+
 				logPush()
 				backChannel.syncJobStatus(protocol.Success)
 				return

@@ -230,9 +230,20 @@ func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []by
 	req.Header.Add("Content-Range", contentRange)
 	req.Header.Add("Job-Token", jobToken)
 
-	_, err = s.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
+	}
+	//noinspection GoUnhandledErrorResult
+	defer resp.Body.Close()
+
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusAccepted {
+		return errors.New(fmt.Sprintf("http status is not ok status '%d' msg '%s'", resp.StatusCode, resp.Status))
 	}
 
 	return nil
