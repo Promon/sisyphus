@@ -3,8 +3,8 @@
 This is a simple Kubernetes-only runner for gitlab.
 It aims to be a more stable alternative to original gitlab runner.
 
-In contrast to the original runner that is designed to support multiple platforms
-such as shell, docker etc. This runner does not need to compromise what K8S features it can use.
+This runner was created specifically for product needs and may not fit other projects. It was developed and tested only
+on GCP. Other providers like AWS, DO etc were not tested and probably will require additional adjustments.
 
 This runner uses Kubernetes [Job](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#job-v1-batch)
 objects. The main advantage of it is that the K8S makes the best effort to run the Job to completion under many adverse scenarios.
@@ -29,3 +29,6 @@ Currently this runner supports:
 |  	Refspecs                | yes | `json:"refspecs"`
 |  	Masking                 | **no** | `json:"masking"`
 |  	Proxy                   | **no** | `json:"proxy"`
+
+### Building and deploying
+THe build and deployments is handled using skaffold, docker, and helm scripts (files/charts). 
