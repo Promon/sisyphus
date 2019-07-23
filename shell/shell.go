@@ -15,7 +15,7 @@ type ScriptContext struct {
 }
 
 // Generate job script
-func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
+func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) (string, error) {
 	env := protocol.GetEnvVars(spec)
 	ctx := ScriptContext{}
 
@@ -55,7 +55,10 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 
 	// Steps from YAML
 	for _, step := range spec.Steps {
-		ctx.printJobStep(step)
+		err := ctx.printJobStep(step)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Upload artifacts
@@ -70,7 +73,7 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) string {
 		}
 	}
 
-	return ctx.builder.String()
+	return ctx.builder.String(), nil
 }
 
 func (s *ScriptContext) addFline(format string, a ...interface{}) {
@@ -181,10 +184,16 @@ done`)
 	s.printGitSyncSubmodules()
 }
 
-func (s *ScriptContext) printJobStep(step protocol.JobStep) {
+func (s *ScriptContext) printJobStep(step protocol.JobStep) error {
 	s.addFline("# STEP %s", step.Name)
 	s.addFline("echo 'Step `%s` has %d commands'", step.Name, len(step.Script))
-	s.addLines(step.Script)
+	augmented, err := genStepScript(step.Script)
+	if err != nil {
+		return err
+	}
+
+	s.addFline(augmented)
+	return nil
 }
 
 func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobId int, jobToken string) {
@@ -283,4 +292,25 @@ func (s *ScriptContext) printUploadCache(cache *protocol.JobCache, cacheBucketNa
 	}
 
 	s.addLines(lines)
+}
+
+// Augment script lines
+func genStepScript(lines []string) (string, error) {
+	var sb strings.Builder
+
+	for _, l := range lines {
+		_, err := sb.WriteString(l)
+		if err != nil {
+			return "", err
+		}
+
+		_, err = fmt.Fprintln(&sb)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Close subshell
+	errHandler := fmt.Sprintf("(%s) || (EXIT=$?; echo \"Failed with code $EXIT\"; sleep 10 && exit $EXIT)", sb.String())
+	return errHandler, nil
 }

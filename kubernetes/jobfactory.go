@@ -29,7 +29,11 @@ func newJobFromGitLab(session *Session, namePrefix string, spec *protocol.JobSpe
 	})
 
 	// Create config map volume with entrypoint script
-	script := shell.GenerateScript(spec, cacheBucket)
+	script, err := shell.GenerateScript(spec, cacheBucket)
+	if err != nil {
+		return nil, err
+	}
+
 	entrypointTemplate := newEntryPointScript(namePrefix, script)
 	entrypoint, err := session.k8sClient.CoreV1().ConfigMaps(session.Namespace).Create(entrypointTemplate)
 	if err != nil {
