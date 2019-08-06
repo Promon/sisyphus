@@ -23,7 +23,7 @@ func GenerateScript(spec *protocol.JobSpec, cacheBucketName string) (string, err
 
 	// GIT
 	if env["GIT_STRATEGY"] == "none" {
-		ctx.addFline("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
+		ctx.addLine("echo 'Skipping GIT checkout. GIT_STRATEGY = none'")
 	} else {
 		_, hasCacheVar := env[SfsEnvVarGitCache]
 		if hasCacheVar && len(env[SfsEnvVarGitCache]) > 0 {
@@ -81,9 +81,16 @@ func (s *ScriptContext) addFline(format string, a ...interface{}) {
 	fmt.Fprintln(&s.builder)
 }
 
+// Add line without formatting
+func (s *ScriptContext) addLine(line string) {
+	s.builder.WriteString(line)
+	fmt.Fprintln(&s.builder)
+}
+
+// add multiple lines without formatting
 func (s *ScriptContext) addLines(lines []string) {
 	for _, l := range lines {
-		fmt.Fprintln(&s.builder, l)
+		s.addLine(l)
 	}
 }
 
@@ -102,7 +109,7 @@ func (s *ScriptContext) printPrelude(projectName string) {
 	s.addFline("rm -rf %s", projectDir)
 	s.addFline("mkdir -p '%s'", projectDir)
 	s.addFline("cd '%s'", projectDir)
-	s.addFline("pwd")
+	s.addLine("pwd")
 }
 
 // Generate git clone code
@@ -170,8 +177,8 @@ func (s *ScriptContext) printGitDownloadCache(cacheUrl string) {
 	s.addFline("gsutil cat %s | tar -zx", cacheUrl)
 
 	// Cached git has wrong token in submodule urls
-	s.addFline("# Fix CI tokens")
-	s.addFline(`new_token="s/gitlab-ci-token:[a-zA-Z0-9_-]\+/gitlab-ci-token:${CI_JOB_TOKEN}/g"
+	s.addLine("# Fix CI tokens")
+	s.addLine(`new_token="s/gitlab-ci-token:[a-zA-Z0-9_-]\+/gitlab-ci-token:${CI_JOB_TOKEN}/g"
 sed -i -e ${new_token} '.git/config'
 
 for CNF in $(find ./.git/modules/ -type f -name 'config'); do
@@ -192,19 +199,19 @@ func (s *ScriptContext) printJobStep(step protocol.JobStep) error {
 		return err
 	}
 
-	s.addFline(augmented)
+	s.addLine(augmented)
 	return nil
 }
 
 func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobId int, jobToken string) {
 	s.addFline("# Upload artifact %s", artifact.Name)
-	s.addFline("TMPDIR=$(mktemp -d)")
+	s.addLine("TMPDIR=$(mktemp -d)")
 
 	// ZIP command
 	inFiles := strings.Join(artifact.Paths, " ")
 	zipFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
 	zipCommand := fmt.Sprintf("zip -p -r %s %s", zipFile, inFiles)
-	s.addFline(zipCommand)
+	s.addLine(zipCommand)
 
 	// Upload
 	uploadLines := genUploadArtifactSnippet(artifact, jobId, jobToken, zipFile)
@@ -220,7 +227,7 @@ func (s *ScriptContext) printUploadArtifact(artifact *protocol.JobArtifact, jobI
 
 func (s *ScriptContext) printDownloadDependency(dep *protocol.JobDependency) {
 	s.addFline("# Download job dependency %s", dep.Name)
-	s.addFline("TMPDIR=$(mktemp -d)")
+	s.addLine("TMPDIR=$(mktemp -d)")
 
 	// Download
 	dlFile := fmt.Sprintf("${TMPDIR}/%s.zip", DefaultUploadName)
@@ -229,7 +236,7 @@ func (s *ScriptContext) printDownloadDependency(dep *protocol.JobDependency) {
 
 	// Unzip
 	unzipCommand := fmt.Sprintf("unzip -o %s", dlFile)
-	s.addFline(unzipCommand)
+	s.addLine(unzipCommand)
 
 	// cleanup
 	lines := []string{
