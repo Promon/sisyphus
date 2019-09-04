@@ -110,11 +110,14 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			// Handle jobs canceled by gitlab
 			gitlabStatus := backChannel.syncJobStatus(protocol.Running)
 			switch {
+			case gitlabStatus == nil:
+				ctxLogger.Warn("gitlab job status is nil")
+				continue
 			case gitlabStatus.StatusCode == http.StatusForbidden:
-				ctxLogger.Info("Job canceled")
+				ctxLogger.Info("job canceled")
 				return
 			case gitlabStatus.StatusCode != http.StatusOK:
-				ctxLogger.Warnf("Unknown gitlab status response code '%d', msg '%s'", gitlabStatus.StatusCode, gitlabStatus.RemoteState)
+				ctxLogger.Warnf("unknown gitlab status response code '%d', msg '%s'", gitlabStatus.StatusCode, gitlabStatus.RemoteState)
 				continue
 			}
 
