@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -89,7 +90,10 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 		return nil, err
 	}
 	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	// No new jobs
 	if resp.StatusCode == http.StatusNoContent {
@@ -199,7 +203,10 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 		return nil, err
 	}
 	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	rstate := RemoteJobState{
 		StatusCode:  resp.StatusCode,
@@ -235,7 +242,10 @@ func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []by
 		return err
 	}
 	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
