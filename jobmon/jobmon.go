@@ -87,7 +87,8 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		}
 	}
 
-	backChannel.syncJobStatus(protocol.Pending)
+	// The error can be ignored for pending status,
+	_, _ = backChannel.syncJobStatus(protocol.Pending)
 
 	// Rate limiter for this routine
 	tickJobState := time.NewTicker(1 * time.Second)
@@ -108,7 +109,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			}
 
 			// Handle jobs canceled by gitlab
-			gitlabStatus := backChannel.syncJobStatus(protocol.Running)
+			gitlabStatus, err := backChannel.syncJobStatus(protocol.Running)
 			switch {
 			case gitlabStatus == nil:
 				ctxLogger.Warn("gitlab job status is nil")
@@ -155,7 +156,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				labLog.Error(msg)
 
 				logPush()
-				backChannel.syncJobStatus(protocol.Failed)
+				syncJobStateLoop(&backChannel, protocol.Failed, ctxLogger)
 				return
 
 			case js.Succeeded > 0 && js.Active == 0 ||
@@ -165,7 +166,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				labLog.Info(msg)
 
 				logPush()
-				backChannel.syncJobStatus(protocol.Success)
+				syncJobStateLoop(&backChannel, protocol.Success, ctxLogger)
 				return
 			}
 
@@ -177,8 +178,29 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			// the runner is killed
 			labLog.Error("The runner was killed")
 			logPush()
-			backChannel.syncJobStatus(protocol.Failed)
+			syncJobStateLoop(&backChannel, protocol.Failed, ctxLogger)
 			return
+		}
+	}
+
+}
+
+func syncJobStateLoop(backChannel *gitLabBackChannel, state protocol.JobState, ctxLogger *logrus.Entry) {
+	loopTicker := time.NewTicker(time.Second)
+	defer loopTicker.Stop()
+	var retries = 5
+
+	for retries > 0 {
+		retries = retries - 1
+
+		select {
+		case <-loopTicker.C:
+			_, err := backChannel.syncJobStatus(state)
+			if err != nil {
+				ctxLogger.Warn(err)
+			} else {
+				return
+			}
 		}
 	}
 
