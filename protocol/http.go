@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 )
 
@@ -86,7 +85,6 @@ func (s *RunnerHttpSession) PollNextJob(runnerToken string) (*JobSpec, error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		debugResponse(resp)
 		return nil, err
 	}
 	//noinspection GoUnhandledErrorResult
@@ -281,17 +279,4 @@ func NewHttpSession(baseUrl string) (*RunnerHttpSession, error) {
 		BaseUrl: v,
 		client:  &newClient,
 	}, nil
-}
-
-func debugResponse(resp *http.Response) {
-	if log.GetLevel() < log.DebugLevel {
-		return
-	}
-
-	b, err := httputil.DumpResponse(resp, true)
-	if err != nil {
-		log.Warn(err)
-	}
-
-	log.Debugf("---RESPONSE---\n%v\n---EOF RESPONSE---", string(b))
 }
