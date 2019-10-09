@@ -8,15 +8,15 @@
 ##
 ## Register a runner
 ##
-POST https://git.dev.promon.no/api/v4/runners
+POST https://git.dev-staging.promon.no/api/v4/runners
 Content-Type: application/json
 
 {
-  "token": "xwBZ3KgHmKR8yYD3QA9U",
+  "token": "P9ZBAcfh_xWr_rEnQgzq",
   "tag_list": [
-    "sisyphus-debug"
+    "sisyphus"
   ],
-  "description": "Test Builder for roboshielder"
+  "description": "Staging Sisyphus"
 }
 
 

@@ -7,7 +7,7 @@ metadata:
 data:
   conf.yaml: |
     runner_name: {{ .Values.runnerConf.runnerName }}
-    gitlab_url: https://git.dev.promon.no
+    gitlab_url: {{ .Values.runnerConf.gitlabUrl | quote }}
     runner_token: {{ .Values.runnerConf.runnerToken | quote }}
     k8s_namespace: {{ .Values.runnerConf.namespace | quote }}
     gcp_cache_bucket: gitlab_ci_cache

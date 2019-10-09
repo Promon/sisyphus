@@ -53,3 +53,19 @@ profiles:
                 runnerName: sisyphus-self-builder
                 runnerToken: sqYUuQ9wC-zxNBFUx36w
                 namespace: sisyphus-test
+
+  - name: sisyphus-staging
+    deploy:
+      helm:
+        releases:
+          - name: sisyphus-staging
+            chartPath: files/charts/sisyphus
+            values:
+              image: gcr.io/k8s-skaffold/sisyphus-runner
+            recreatePods: true
+            overrides:
+              runnerConf:
+                gitlabUrl: https://git.dev-staging.promon.no
+                runnerName: sisyphus-staging-builder
+                runnerToken: t1sfza1MGzeisdcfyWVs
+                namespace: sisyphus-test

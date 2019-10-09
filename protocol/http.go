@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // The HttpSession for the runner
@@ -206,12 +207,12 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 		resp.Body.Close()
 	}()
 
-	rstate := RemoteJobState{
+	remoteJobState := RemoteJobState{
 		StatusCode:  resp.StatusCode,
 		RemoteState: resp.Header.Get("Job-Status"),
 	}
 
-	return &rstate, nil
+	return &remoteJobState, nil
 }
 
 // Update Job logs
@@ -274,7 +275,10 @@ func NewHttpSession(baseUrl string) (*RunnerHttpSession, error) {
 		return nil, err
 	}
 
-	newClient := http.Client{}
+	newClient := http.Client{
+		Timeout: 10 * time.Second,
+	}
+
 	return &RunnerHttpSession{
 		BaseUrl: v,
 		client:  &newClient,
