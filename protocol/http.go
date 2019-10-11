@@ -217,7 +217,6 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 
 // Update Job logs
 func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []byte, startOffset int) error {
-	endOffset := startOffset + len(content)
 	path := fmt.Sprintf(PathJobTrace, jobId)
 	reqUrl, err := s.formatRequestUrl(path)
 
@@ -231,9 +230,9 @@ func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []by
 		return err
 	}
 
-	contentRange := fmt.Sprintf("%d-%d", startOffset, endOffset-1)
 	req.Header.Add("Content-Type", "text/plain")
-	req.Header.Add("Content-Range", contentRange)
+	contentLen := fmt.Sprintf("%d", len(content))
+	req.Header.Add("Content-Length", contentLen)
 	req.Header.Add("Job-Token", jobToken)
 
 	resp, err := s.client.Do(req)
@@ -252,7 +251,7 @@ func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []by
 	}
 
 	if resp.StatusCode != http.StatusAccepted {
-		return errors.New(fmt.Sprintf("http status is not ok status '%d' msg '%s'", resp.StatusCode, resp.Status))
+		return errors.New(fmt.Sprintf("http status is not 2xx '%d' msg '%s'", resp.StatusCode, resp.Status))
 	}
 
 	return nil
