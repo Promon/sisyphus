@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -19,9 +21,20 @@ type RunnerHttpSession struct {
 
 	// The http client can be used by multiple threads
 	client *http.Client
+
+	// regexp for PATCH content range
+	regexpContentRange *regexp.Regexp
+}
+
+// The Content range returned from PATCH Requests.
+// Some times it gets out of sync with local state and it is updated from server response header
+type ContentRange struct {
+	Start int
+	End   int
 }
 
 const ContentTypeJson = "application/json"
+const HeaderContentRange = "Content-Range"
 
 const (
 	PathApi        = "/api/v4"
@@ -216,45 +229,90 @@ func (s *RunnerHttpSession) UpdateJobStatus(jobId int, jobToken string, state Jo
 }
 
 // Update Job logs
-func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []byte, startOffset int) error {
+func (s *RunnerHttpSession) PatchJobLog(jobId int, jobToken string, content []byte, startOffset int) (*ContentRange, error) {
+	resp, err := s.tryPatchLog(startOffset, content, jobId, jobToken)
+
+	if err != nil {
+		return nil, err
+	}
+
+	serverRange := ContentRange{
+		Start: startOffset,
+		End:   startOffset + len(content),
+	}
+
+	// We need to correct the Start range and retry
+	serverContentRange := resp.Header.Get("Range")
+	if len(serverContentRange) > 0 {
+		parts := s.regexpContentRange.FindStringSubmatch(serverContentRange)
+
+		// new Start in range
+		nums, parseErr := atoiArray(parts[1:])
+		if parseErr != nil {
+			return nil, parseErr
+		}
+
+		serverRange = ContentRange{
+			Start: nums[0],
+			End:   nums[1],
+		}
+	}
+
+	if resp.StatusCode != http.StatusAccepted {
+		return &serverRange, errors.New(fmt.Sprintf("http status is not 2xx: '%d' msg '%s'", resp.StatusCode, resp.Status))
+	}
+
+	return &serverRange, nil
+}
+
+func atoiArray(strings []string) ([]int, error) {
+	result := make([]int, len(strings))
+	for idx, a := range strings {
+		i, err := strconv.Atoi(a)
+		if err != nil {
+			return nil, err
+		}
+		result[idx] = i
+	}
+
+	return result, nil
+}
+
+func (s *RunnerHttpSession) tryPatchLog(startOffset int, content []byte, jobId int, jobToken string) (*http.Response, error) {
+
 	path := fmt.Sprintf(PathJobTrace, jobId)
 	reqUrl, err := s.formatRequestUrl(path)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	reqBody := bytes.NewReader(content)
 	req, err := http.NewRequest(http.MethodPatch, reqUrl.String(), reqBody)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	endOffset := startOffset + len(content)
+	contentRange := fmt.Sprintf("%d-%d", startOffset, endOffset-1)
 	req.Header.Add("Content-Type", "text/plain")
-	contentLen := fmt.Sprintf("%d", len(content))
-	req.Header.Add("Content-Length", contentLen)
+
+	req.Header.Add(HeaderContentRange, contentRange)
 	req.Header.Add("Job-Token", jobToken)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
 	//noinspection GoUnhandledErrorResult
-	defer func() {
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
-	}()
-
-	_, err = ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	_, err = io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusAccepted {
-		return errors.New(fmt.Sprintf("http status is not 2xx '%d' msg '%s'", resp.StatusCode, resp.Status))
-	}
-
-	return nil
+	return resp, nil
 }
 
 func (s *RunnerHttpSession) formatRequestUrl(refPath string) (*url.URL, error) {
@@ -279,7 +337,8 @@ func NewHttpSession(baseUrl string) (*RunnerHttpSession, error) {
 	}
 
 	return &RunnerHttpSession{
-		BaseUrl: v,
-		client:  &newClient,
+		BaseUrl:            v,
+		client:             &newClient,
+		regexpContentRange: regexp.MustCompile(`(\d+)-(\d+)`),
 	}, nil
 }

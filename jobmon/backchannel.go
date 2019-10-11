@@ -26,6 +26,6 @@ func (bc *gitLabBackChannel) syncJobStatus(state protocol.JobState) (*protocol.R
 	return z, nil
 }
 
-func (bc *gitLabBackChannel) writeLogLines(content []byte, startOffset int) error {
+func (bc *gitLabBackChannel) writeLogLines(content []byte, startOffset int) (*protocol.ContentRange, error) {
 	return bc.httpSession.PatchJobLog(bc.jobId, bc.gitlabJobToken, content, startOffset)
 }

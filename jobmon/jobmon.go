@@ -211,12 +211,22 @@ func pushLogsToGitlab(logState *logState, backChannel *gitLabBackChannel) error 
 	defer logState.logBufferMux.Unlock()
 
 	if logState.logBuffer.Len() > 0 {
-		err := backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
+		contentRange, err := backChannel.writeLogLines(logState.logBuffer.Bytes(), logState.gitlabStartOffset)
+
 		if err != nil {
+			if contentRange != nil {
+				logState.gitlabStartOffset = contentRange.End
+			}
+
 			return err
 		} else {
 			// update next offset
-			logState.gitlabStartOffset = logState.gitlabStartOffset + logState.logBuffer.Len()
+			if contentRange == nil {
+				logState.gitlabStartOffset = logState.gitlabStartOffset + logState.logBuffer.Len()
+			} else {
+				logState.gitlabStartOffset = contentRange.End
+			}
+
 			// reset buffer
 			logState.logBuffer.Reset()
 		}
