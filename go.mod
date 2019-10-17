@@ -8,7 +8,6 @@ require (
 	cloud.google.com/go/storage v1.1.1 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
-	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/pprof v0.0.0-20191016141926-35da2c455f8f // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
