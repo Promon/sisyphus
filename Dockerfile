@@ -1,7 +1,7 @@
 #
 # Build environment
 #
-FROM golang:1.12 AS build-env
+FROM golang:1.13 AS build-env
 
 # Install required dependencies
 RUN set -x \
