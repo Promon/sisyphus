@@ -1,7 +1,7 @@
 stages:
   - build
 
-image: eu.gcr.io/qa-cloud-186211/gcr.io/k8s-skaffold/sisyphus-build-env:dbff40d
+image: eu.gcr.io/qa-cloud-186211/gcr.io/k8s-skaffold/sisyphus-build-env:a17e8be-dirty@sha256:bae04526d763d7bf06f1a108b8515467e22796aedb8f9bae6ad1cf27b62322ed
 
 basic build:
   stage: build

@@ -102,6 +102,10 @@ func main() {
 	// Channel used to inform goroutines that the service is shutting down
 	stopChan := make(chan bool)
 
+	// Global rate limiter for gitlab log PATCH-er
+	tickGitLabLog := time.NewTicker(100 * time.Millisecond)
+	defer tickGitLabLog.Stop()
+
 	// Queue for new jobs from gitlab
 	newJobs := make(chan *protocol.JobSpec, BurstLimit)
 	go nextJobLoop(httpSession, sConf.RunnerToken, newJobs, stopChan)
@@ -132,7 +136,7 @@ func main() {
 				log.Error(err)
 			}
 
-			go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, stopChan)
+			go jobmon.RunJob(j, k8sSession, resReq, httpSession, sConf.GcpCacheBucket, stopChan, tickGitLabLog)
 
 		case s := <-signals:
 			log.Debugf("Signal received %v", s)

@@ -14,7 +14,14 @@ import (
 )
 
 // Create job from descriptor and monitor loop
-func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJobParameters, httpSession *protocol.RunnerHttpSession, cacheBucket string, stopChan <-chan bool) {
+func RunJob(spec *protocol.JobSpec,
+	k8sSession *k.Session,
+	k8sJobParams *k.K8SJobParameters,
+	httpSession *protocol.RunnerHttpSession,
+	cacheBucket string,
+	stopChan <-chan bool,
+	tickGitLabLog *time.Ticker) {
+
 	jobPrefix := fmt.Sprintf("sphs-%v-%v-", spec.JobInfo.ProjectId, spec.Id)
 
 	rrq, err := protocol.ToFlatJson(k8sJobParams)
@@ -40,12 +47,12 @@ func RunJob(spec *protocol.JobSpec, k8sSession *k.Session, k8sJobParams *k.K8SJo
 		logrus.Error(err)
 		return
 	} else {
-		monitorJob(job, httpSession, spec.Id, spec.Token, stopChan)
+		monitorJob(job, httpSession, spec.Id, spec.Token, stopChan, tickGitLabLog)
 	}
 }
 
 // Monitor job loop
-func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, stopChan <-chan bool) {
+func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, gitlabJobToken string, stopChan <-chan bool, tickGitLabLog *time.Ticker) {
 	ctxLogger := logrus.WithFields(
 		logrus.Fields{
 			"k8sjob":    job.Name,
@@ -81,6 +88,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 	}()
 
 	logPush := func() {
+		<-tickGitLabLog.C
 		err := pushLogsToGitlab(loggingState, &backChannel)
 		if err != nil {
 			ctxLogger.Warn(err)
@@ -92,10 +100,10 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 	// Rate limiter for this routine
 	tickJobState := time.NewTicker(1 * time.Second)
-	tickGitLabLog := time.NewTicker(1 * time.Second)
-
 	defer tickJobState.Stop()
-	defer tickGitLabLog.Stop()
+
+	logPushTimer := time.NewTicker(1 * time.Second)
+	defer logPushTimer.Stop()
 
 	for {
 		select {
@@ -171,7 +179,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			}
 
 			// push logs to gitlab
-		case <-tickGitLabLog.C:
+		case <-logPushTimer.C:
 			logPush()
 
 		case <-stopChan:
