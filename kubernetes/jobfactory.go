@@ -226,7 +226,7 @@ func jobFromGitHubSpec(namePrefix string,
 
 							// Image
 							Image:           spec.Image.Name,
-							ImagePullPolicy: v1.PullAlways,
+							ImagePullPolicy: v1.PullIfNotPresent,
 
 							Env: convertEnvVars(spec.Variables),
 
