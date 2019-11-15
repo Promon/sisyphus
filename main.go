@@ -25,24 +25,23 @@ const (
 	DefaultActiveDeadlineSeconds = 3600
 )
 
-func init() {
-	// Initialize logger
-	log.SetLevel(log.DebugLevel)
-	log.SetFormatter(&log.TextFormatter{
-		ForceColors:            true,
-		FullTimestamp:          true,
-		DisableLevelTruncation: true,
-	})
+//func init() {
+//	// Initialize logger
+//	log.SetLevel(log.DebugLevel)
+//
+//	// Json formatter for main logs
+//	log.SetFormatter(&log.JSONFormatter{})
+//
+//	log.SetOutput(os.Stdout)
+//}
 
-	log.SetOutput(os.Stdout)
-}
-
-func readConf(inClusterOpt *bool, enableGCEProfilerOpt *bool) (*conf.SisyphusConf, error) {
+func readConf(inClusterOpt *bool, enableGCEProfilerOpt *bool, jsonLog *bool) (*conf.SisyphusConf, error) {
 	var confPath string
 
 	flag.StringVar(&confPath, "conf", "", "The `conf.yaml` file")
 	flag.BoolVar(inClusterOpt, "in-cluster", false, "Use in-cluster config, when running inside cluster")
 	flag.BoolVar(enableGCEProfilerOpt, "gce-profiler", false, "Enable GCE cloud profiler")
+	flag.BoolVar(jsonLog, "log-json", false, "Print JSON log messages")
 	flag.Parse()
 
 	if len(confPath) == 0 {
@@ -62,16 +61,40 @@ func readConf(inClusterOpt *bool, enableGCEProfilerOpt *bool) (*conf.SisyphusCon
 	return sConf, nil
 }
 
+func initAppLogger(json bool) {
+
+	// Initialize logger
+	log.SetLevel(log.DebugLevel)
+
+	if json {
+		// Json formatter for main logs
+		log.SetFormatter(&log.JSONFormatter{})
+	} else {
+		// human readable logs
+		log.SetFormatter(&log.TextFormatter{
+			ForceColors:            true,
+			FullTimestamp:          true,
+			DisableLevelTruncation: true,
+		})
+	}
+
+	log.SetOutput(os.Stdout)
+}
+
 func main() {
 	log.Info("Hello.")
 	var inCluster = false
 	var gceProfiler = false
-	sConf, err := readConf(&inCluster, &gceProfiler)
+	var logJson = false
+	sConf, err := readConf(&inCluster, &gceProfiler, &logJson)
 	if err != nil {
 		log.Panic(err)
 	}
+	initAppLogger(logJson)
+
 	log.Infof("In Cluster config: %v", inCluster)
 	log.Infof("GCE profiler: %v", gceProfiler)
+	log.Infof("JSON logs: %t", logJson)
 
 	// GCE profiler
 	if gceProfiler {
@@ -119,7 +142,7 @@ func main() {
 		select {
 		case j := <-newJobs:
 			ji := j.JobInfo
-			log.Infof("New job received. proj=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
+			log.Infof("New job received. project=%s stage=%s name=%s", ji.ProjectName, ji.Stage, ji.Name)
 
 			// Parse custom job parameters passed via env variables
 			vars := protocol.GetEnvVars(j)
@@ -193,13 +216,13 @@ func loadCustomK8SJobParams(envVars map[string]string,
 	// Custom node selector
 	nSel, ok := envVars[shell.SfsNodeSelector]
 	if ok {
-		customNsel := make(map[string]string)
-		err := json.Unmarshal([]byte(nSel), &customNsel)
+		customNodeSelector := make(map[string]string)
+		err := json.Unmarshal([]byte(nSel), &customNodeSelector)
 		if err != nil {
 			return nil, err
 		}
 
-		params.NodeSelector = customNsel
+		params.NodeSelector = customNodeSelector
 	} else {
 		params.NodeSelector = defaultNodeSelector
 	}
