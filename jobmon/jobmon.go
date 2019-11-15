@@ -112,7 +112,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			status, err := job.GetK8SJobStatus()
 			if err != nil {
 				ctxLogger.Warn(err)
-				labLog.Warn(err)
+				labLog.Warnf("%s %s", err, podsInfoMessage(status.Pods))
 				continue
 			}
 
@@ -140,7 +140,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				podName, err := findPodOfContainer(status.Pods, k.ContainerNameBuilder)
 				if err != nil {
 					ctxLogger.Warn(err)
-					labLog.Warn(err)
+					labLog.Warnf("%s %s", err, podsInfoMessage(status.Pods))
 					continue
 				}
 
@@ -148,7 +148,7 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				err = loggingState.bufferLogs(job, podName)
 				if err != nil {
 					ctxLogger.Warn(err)
-					labLog.Warn(err)
+					labLog.Warnf("%s %s", err, podsInfoMessage(status.Pods))
 					continue
 				}
 			} else if builderPhase == v1.PodPending {
@@ -257,8 +257,32 @@ func podsInfoMessage(pods []v1.Pod) string {
 }
 
 func podStatusMessage(pod v1.Pod) string {
+	const check = "\u2714"
+	const cross = "\u2718"
+	const qMark = "\uFE56"
+
 	status := pod.Status
-	return fmt.Sprintf("[pod='%s' phase='%s' reason='%s' msg='%s']", pod.Name, status.Phase, status.Reason, status.Message)
+	activeConditions := make([]string, 0, len(status.Conditions))
+
+	for _, cond := range status.Conditions {
+		var mark string
+
+		switch cond.Status {
+		case v1.ConditionTrue:
+			mark = check
+		case v1.ConditionFalse:
+			mark = cross
+		default:
+			mark = qMark
+		}
+		desc := fmt.Sprintf("%s %s", cond.Type, mark)
+		activeConditions = append(activeConditions, desc)
+	}
+
+	return fmt.Sprintf("[pod='%s' phase='%s' conditions='%s' reason='%s' msg='%s']",
+		pod.Name, status.Phase,
+		strings.Join(activeConditions, ", "),
+		status.Reason, status.Message)
 }
 
 func findPodOfContainer(pods []v1.Pod, containerName string) (string, error) {
