@@ -31,4 +31,4 @@ Currently this runner supports:
 |  	Proxy                   | **no** | `json:"proxy"`
 
 ### Building and deploying
-THe build and deployments is handled using skaffold, docker, and helm scripts (files/charts). 
+The build and deployments is handled using skaffold, docker, and helm scripts (files/charts). 

@@ -25,9 +25,6 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     && apt-get update -y \
     && apt-get install google-cloud-sdk -y
 
-COPY files/promon.crt /usr/local/share/ca-certificates/promon.crt
-RUN update-ca-certificates
-
 # Cache required go modules
 WORKDIR /build
 COPY ./go.mod ./go.sum ./
@@ -56,5 +53,3 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /build/sisyphus /bin/
-COPY files/promon.crt /usr/local/share/ca-certificates/promon.crt
-RUN update-ca-certificates

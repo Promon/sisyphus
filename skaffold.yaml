@@ -2,8 +2,7 @@ apiVersion: skaffold/v1beta11
 kind: Config
 build:
   tagPolicy:
-    gitCommit:
-      variant: AbbrevCommitSha
+    gitCommit: {}
   artifacts:
     - image: gcr.io/k8s-skaffold/sisyphus-build-env
       docker:
@@ -37,7 +36,7 @@ profiles:
             overrides:
               runnerConf:
                 runnerName: sisyphus-production
-                runnerToken: tZbC3Lq5kLfzdGXhLUBj
+                runnerToken: ABCXYZ
 
   - name: self-builder
     deploy:
@@ -51,21 +50,5 @@ profiles:
             overrides:
               runnerConf:
                 runnerName: sisyphus-self-builder
-                runnerToken: sqYUuQ9wC-zxNBFUx36w
-                namespace: sisyphus-test
-
-  - name: sisyphus-staging
-    deploy:
-      helm:
-        releases:
-          - name: sisyphus-staging
-            chartPath: files/charts/sisyphus
-            values:
-              image: gcr.io/k8s-skaffold/sisyphus-runner
-            recreatePods: true
-            overrides:
-              runnerConf:
-                gitlabUrl: https://git.dev-staging.promon.no
-                runnerName: sisyphus-staging-builder
-                runnerToken: t1sfza1MGzeisdcfyWVs
+                runnerToken: ABCXYZ
                 namespace: sisyphus-test
