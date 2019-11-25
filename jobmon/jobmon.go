@@ -157,9 +157,9 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 			}
 
 			switch {
-			case js.Failed > 0 ||
-				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobFailed):
-				msg := fmt.Sprintf("Job Failed %s", podsInfoMessage(status.Pods))
+			case js.Failed > 0:
+				duration := renderJobDuration(&js)
+				msg := fmt.Sprintf("Job Failed %s. %s", duration, podsInfoMessage(status.Pods))
 				ctxLogger.Warn(msg)
 				labLog.Error(msg)
 
@@ -167,9 +167,11 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				syncJobStateLoop(&backChannel, protocol.Failed, ctxLogger)
 				return
 
-			case js.Succeeded > 0 && js.Active == 0 ||
-				(len(js.Conditions) > 0 && js.Conditions[0].Type == v12.JobComplete):
-				msg := fmt.Sprintf("OK %s", podsInfoMessage(status.Pods))
+			case js.Succeeded > 0 && js.Active == 0:
+
+				duration := renderJobDuration(&js)
+				msg := fmt.Sprintf("OK: duration %s. %s", duration, podsInfoMessage(status.Pods))
+
 				ctxLogger.Info(msg)
 				labLog.Info(msg)
 
@@ -191,6 +193,20 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 		}
 	}
 
+}
+
+func renderJobDuration(jobStatus *v12.JobStatus) string {
+	strDuration := "unknown"
+
+	if jobStatus.StartTime != nil && jobStatus.CompletionTime != nil {
+		start := jobStatus.StartTime.Time
+		end := jobStatus.CompletionTime.Time
+
+		dur := end.Sub(start)
+		strDuration = dur.String()
+	}
+
+	return strDuration
 }
 
 func syncJobStateLoop(backChannel *gitLabBackChannel, state protocol.JobState, ctxLogger *logrus.Entry) {
