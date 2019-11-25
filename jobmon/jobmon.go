@@ -1,6 +1,7 @@
 package jobmon
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -156,24 +157,38 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 				labLog.Infof("PENDING %s", podInfo)
 			}
 
+			isFailure, failureCond := checkJobConditions(js.Conditions, v12.JobFailed)
+			isSuccess, successCond := checkJobConditions(js.Conditions, v12.JobComplete)
+
 			switch {
-			case js.Failed > 0:
+			case isFailure:
 				duration := renderJobDuration(&js)
 				msg := fmt.Sprintf("Job Failed %s. %s", duration, podsInfoMessage(status.Pods))
+
 				ctxLogger.Warn(msg)
 				labLog.Error(msg)
+
+				if failureCond != nil {
+					inf := renderJson(failureCond)
+					ctxLogger.Warn(inf)
+					labLog.Error(inf)
+				}
 
 				logPush()
 				syncJobStateLoop(&backChannel, protocol.Failed, ctxLogger)
 				return
 
-			case js.Succeeded > 0 && js.Active == 0:
-
+			case isSuccess:
 				duration := renderJobDuration(&js)
 				msg := fmt.Sprintf("OK: duration %s. %s", duration, podsInfoMessage(status.Pods))
-
 				ctxLogger.Info(msg)
 				labLog.Info(msg)
+
+				if successCond != nil {
+					inf := renderJson(successCond)
+					ctxLogger.Info(inf)
+					labLog.Info(inf)
+				}
 
 				logPush()
 				syncJobStateLoop(&backChannel, protocol.Success, ctxLogger)
@@ -195,8 +210,9 @@ func monitorJob(job *k.Job, httpSession *protocol.RunnerHttpSession, jobId int, 
 
 }
 
+// make human readable job duration
 func renderJobDuration(jobStatus *v12.JobStatus) string {
-	strDuration := "unknown"
+	strDuration := ""
 
 	if jobStatus.StartTime != nil && jobStatus.CompletionTime != nil {
 		start := jobStatus.StartTime.Time
@@ -207,6 +223,23 @@ func renderJobDuration(jobStatus *v12.JobStatus) string {
 	}
 
 	return strDuration
+}
+
+// check if job condition is present
+func checkJobConditions(conditions []v12.JobCondition, lookFor v12.JobConditionType) (bool, *v12.JobCondition) {
+	for _, cond := range conditions {
+		if cond.Type == lookFor && cond.Status == v1.ConditionTrue {
+			return true, &cond
+		}
+	}
+
+	return false, nil
+}
+
+// Render json and ignore errors
+func renderJson(obj interface{}) string {
+	render, _ := json.Marshal(obj)
+	return string(render)
 }
 
 func syncJobStateLoop(backChannel *gitLabBackChannel, state protocol.JobState, ctxLogger *logrus.Entry) {
